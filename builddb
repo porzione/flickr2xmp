@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'pp'
 require 'optparse'
 require 'ostruct'
 require 'find'
@@ -14,7 +13,7 @@ o = OpenStruct.new
 OptionParser.new do |opts|
   opts.on('-i IMAGES', 'Path to images') { |i| o.i = i }
   opts.on('-e EXCLUDE', 'Exclude paths') { |e| excl << e }
-  opts.on('-v', 'Verbose')               { |v| o.v = true }
+  opts.on('-v', 'Verbose')               { o.v = true }
 end.parse!
 excl = excl.empty? ? nil : excl.join('|')
 
