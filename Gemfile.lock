@@ -1,0 +1,15 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    exiv2 (0.0.8)
+    geo_coord (0.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  exiv2
+  geo_coord
+
+BUNDLED WITH
+   1.16.1

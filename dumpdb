@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'dbm'
+
+db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
+db.sort{ |a, b| a[0].to_i <=> b[0].to_i }.each do |t, path|
+  time = Time.at t.to_i
+  puts "#{t} #{time} #{path}"
+end
+puts "records: #{db.size}"
+db.close

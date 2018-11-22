@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'pp'
+require 'optparse'
+require 'ostruct'
+require 'find'
+require 'exiv2'
+require 'dbm'
+require 'date'
+
+excl = []
+o = OpenStruct.new
+OptionParser.new do |opts|
+  opts.on('-i IMAGES', 'Path to images') { |i| o.i = i }
+  opts.on('-e EXCLUDE', 'Exclude paths') { |e| excl << e }
+  opts.on('-v', 'Verbose')               { |v| o.v = true }
+end.parse!
+excl = excl.empty? ? nil : excl.join('|')
+
+abort('provide path to images') unless o.i
+
+db = DBM.open('photo', 0644, DBM::WRCREAT)
+Find.find(o.i) do |path|
+  next if excl && /(#{excl})/ =~ path
+  next unless File.file?(path)
+  image = Exiv2::ImageFactory.open path
+  image.read_metadata
+  date = image.exif_data['Exif.Photo.DateTimeOriginal']
+  puts path if o.v
+  if date && !date.empty?
+    begin
+      date = DateTime.strptime(date, '%Y:%m:%d %H:%M:%S')
+    rescue ArgumentError => e
+      STDERR.puts "bad date: #{path} #{date} #{e}"
+      next
+    end
+  else
+    STDERR.puts "no date: #{path}"
+    next
+  end
+  puts date if o.v
+  db[ date.to_time.to_i.to_s ] = path
+end
+db.close

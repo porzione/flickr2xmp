@@ -1,0 +1,89 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'ostruct'
+require 'json'
+require 'date'
+require 'dbm'
+require 'erb'
+require 'base64'
+require 'geo/coord'
+
+o = OpenStruct.new
+OptionParser.new do |opts|
+  opts.on('-j JSON', 'Path to JSONs') { |j| o.jsons = j }
+  opts.on('-o', 'Overwrite')          { o.ow = true }
+  opts.on('-n', 'Dry run')            { o.dry = true }
+  opts.on('-v', 'Verbose')            { o.v = true }
+  opts.on('--vg', 'Verbose gps')      { o.vg = true }
+  opts.on('--wd', 'xmp in work dir')  { o.wd = true }
+end.parse!
+
+abort('provide path to jsons') unless o.jsons
+
+def geo_fmt s
+  coord = s.insert(-7, '.')
+  coord.sub(/-\./, '-0.')
+end
+
+db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
+tpl = File.read('xmp.erb')
+
+Dir.glob(File.join(o.jsons, 'photo_*.json')).each do |path|
+  flickr = JSON.parse(File.read path).reject{|k,v| k == 'exif'}
+
+  date = DateTime.strptime(flickr['date_taken'], '%Y-%m-%d %H:%M:%S')
+  ts = date.to_time.to_i.to_s
+  file = db[ date.to_time.to_i.to_s ]
+  next unless file
+
+  tags = flickr['tags'].map{ |t| t['tag'] } if flickr['tags'].size > 0
+  puts "#{file} #{tags}" if o.v
+
+  fd = {
+    url: flickr['photopage'],
+    flickr_id: flickr['id'],
+    flickr_views: flickr['count_views'],
+    flickr_faves: flickr['count_faves']
+  }
+
+  fd[:albums] = flickr['albums'].map{|t| t['title']} if flickr['albums'].size > 0
+  fd[:groups] = flickr['groups'].map{|t| t['name']} if flickr['groups'].size > 0
+  fd[:comments] = flickr['comments'] if flickr['comments'].size > 0
+
+  if flickr['geo']
+    lat = geo_fmt flickr['geo']['latitude']
+    lon = geo_fmt flickr['geo']['longitude']
+    g = Geo::Coord.new lat, lon
+    gps = {
+      lat: g.strfcoord('%latd,%latm.%lats%lath'),
+      lon: g.strfcoord('%lngd,%lngm.%lngs%lngh')
+    }
+    puts "https://www.google.com/maps/place/#{lat},#{lon} #{gps[:lat]},#{gps[:lon]} " if o.vg
+  end
+  next if o.dry
+
+  bn = File.basename file
+  xmp = ERB.new(tpl, nil, '-').result_with_hash(
+    file:    bn,
+    title:   flickr['name'],
+    data:    Base64.strict_encode64(JSON.generate(fd)),
+    creator: ENV['USER'],
+    tags:    tags,
+    description: flickr['description'].empty? ? flickr['description'] : nil,
+    mdate: DateTime.strptime(flickr['date_imported'], '%Y-%m-%d %H:%M:%S'),
+    cdate: date,
+    gps: gps
+  )
+  sidecar = "#{o.wd ? bn : file}.xmp"
+  if File.exist?(sidecar) && !o.ow
+    STDERR.puts "sidecar exist: #{sidecar}"
+    next
+  end
+  File.open(sidecar, 'w') { |f| f.write(xmp) }
+
+end
+
+db.close
+
