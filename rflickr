@@ -10,7 +10,6 @@ require 'dbm'
 require 'erb'
 require 'base64'
 require 'geo/coord'
-require 'exiv2'
 
 stags = []
 o = OpenStruct.new
@@ -35,6 +34,8 @@ end
 
 class XmpWriter
 
+  TK = 'github.com/porzione/flickr2xmp'
+
   def initialize
     @tpl = File.read('xmp.erb')
   end
@@ -43,16 +44,15 @@ class XmpWriter
     ih[:title].encode!(xml: :text) if ih[:title]
     ih[:descr].encode!(xml: :text) if ih[:descr]
     ih[:tags].map! { |t| t.encode xml: :text }
-    xmp = ERB.new(@tpl, nil, '-').result_with_hash ih
+    xmp = ERB.new(@tpl, nil, '-').result_with_hash ih.merge(tk: TK)
     File.open(filename, 'w') { |f| f.write(xmp) }
   end
 
   def merge ih, filename
-    x = Exiv2::ImageFactory.open filename
-    x.read_metadata
-    puts filename
-    pp x.xmp_data.to_hash
-    STDERR.puts 'merge not implemented yet'
+    raise 'merge is not implemented yet'
+    #xd['Xmp.dc.title'] = ih[:title] unless xh['Xmp.dc.title']
+    #xd['Xmp.dc.description'] = ih[:title] unless xh['Xmp.dc.description']
+    #xd['Xmp.dc.subject'] = xd['Xmp.dc.subject'].split(/,\s/).concat(ih[:tags]).uniq#.join(',')
   end
 
 end
