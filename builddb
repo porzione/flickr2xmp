@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'pp'
 require 'optparse'
 require 'ostruct'
 require 'find'
@@ -14,24 +15,43 @@ OptionParser.new do |opts|
   opts.on('-i IMAGES', 'Path to images') { |i| o.i = i }
   opts.on('-e EXCLUDE', 'Exclude paths') { |e| excl << e }
   opts.on('-v', 'Verbose')               { o.v = true }
+  opts.on('-d', 'Debug')                 { o.dbg = true }
 end.parse!
 excl = excl.empty? ? nil : excl.join('|')
 
 abort('provide path to images') unless o.i
+abort("not a directory: #{o.i}") unless File.directory?(o.i)
 
 db = DBM.open('photo', 0644, DBM::WRCREAT)
 Find.find(o.i) do |path|
+  next if /\.xmp$/i =~ path
   next if excl && /(#{excl})/ =~ path
   next unless File.file?(path)
-  image = Exiv2::ImageFactory.open path
-  image.read_metadata
-  date = image.exif_data['Exif.Photo.DateTimeOriginal']
+  begin
+    image = Exiv2::ImageFactory.open path
+    image.read_metadata
+  rescue Exiv2::BasicError => e
+    STDERR.puts e
+    next
+  end
   puts path if o.v
-  if date && !date.empty?
+  if o.dbg
+    pp image.exif_data.to_hash if image.exif_data
+    pp image.xmp_data.to_hash  if image.xmp_data
+    pp image.iptc_data.to_hash if image.iptc_data
+  end
+  if (d = image.exif_data['Exif.Photo.DateTimeOriginal'])
     begin
-      date = DateTime.strptime(date, '%Y:%m:%d %H:%M:%S')
+      date = DateTime.strptime(d, '%Y:%m:%d %H:%M:%S')
     rescue ArgumentError => e
-      STDERR.puts "bad date: #{path} #{date} #{e}"
+      STDERR.puts "bad exif date: #{path} #{d} #{e}"
+      next
+    end
+  elsif (d = image.xmp_data['Xmp.xmp.CreateDate'])
+    begin
+      date = DateTime.iso8601(d)
+    rescue ArgumentError => e
+      STDERR.puts "bad xmp date: #{path} #{d} #{e}"
       next
     end
   else
