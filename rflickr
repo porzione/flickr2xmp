@@ -15,10 +15,11 @@ o = OpenStruct.new
 OptionParser.new do |opts|
   opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
   opts.on('-o', 'Overwrite')          { o.ow = true }
+  opts.on('-m', 'Merge XMP')          { o.mx = true }
   opts.on('-n', 'Dry run')            { o.dry = true }
   opts.on('-v', 'Verbose')            { o.v = true }
   opts.on('--vg', 'Verbose gps')      { o.vg = true }
-  opts.on('--wd', 'xmp in work dir')  { o.wd = true }
+  opts.on('--wd', 'XMP in work dir')  { o.wd = true }
   opts.on('--st TAG', 'Skip tag')     { |t| stags << t }
 end.parse!
 
@@ -83,6 +84,7 @@ Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
     gps: gps
   )
   sidecar = "#{o.wd ? bn : file}.xmp"
+  # TODO merge o.mx, backup original
   if File.exist?(sidecar) && !o.ow
     STDERR.puts "sidecar exist: #{sidecar}"
     next
