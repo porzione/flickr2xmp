@@ -10,17 +10,20 @@ require 'erb'
 require 'base64'
 require 'geo/coord'
 
+stags = []
 o = OpenStruct.new
 OptionParser.new do |opts|
-  opts.on('-j JSON', 'Path to JSONs') { |j| o.jsons = j }
+  opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
   opts.on('-o', 'Overwrite')          { o.ow = true }
   opts.on('-n', 'Dry run')            { o.dry = true }
   opts.on('-v', 'Verbose')            { o.v = true }
   opts.on('--vg', 'Verbose gps')      { o.vg = true }
   opts.on('--wd', 'xmp in work dir')  { o.wd = true }
+  opts.on('--st TAG', 'Skip tag')     { |t| stags << t }
 end.parse!
 
-abort('provide path to jsons') unless o.jsons
+abort('provide path to jsons') unless o.j
+abort("not a directory: #{o.j}") unless File.directory?(o.j)
 
 def geo_fmt s
   coord = s.insert(-7, '.')
@@ -30,7 +33,7 @@ end
 db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
 tpl = File.read('xmp.erb')
 
-Dir.glob(File.join(o.jsons, 'photo_*.json')).each do |path|
+Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
   flickr = JSON.parse(File.read path).reject{|k,v| k == 'exif'}
 
   date = DateTime.strptime(flickr['date_taken'], '%Y-%m-%d %H:%M:%S')
@@ -38,7 +41,10 @@ Dir.glob(File.join(o.jsons, 'photo_*.json')).each do |path|
   file = db[ date.to_time.to_i.to_s ]
   next unless file
 
-  tags = flickr['tags'].map{ |t| t['tag'] } if flickr['tags'].size > 0
+  unless flickr['tags'].empty?
+    tags = flickr['tags'].map{ |t| t['tag'] }
+    tags.reject!{ |t| stags.include? t } unless stags.empty?
+  end
   puts "#{file} #{tags}" if o.v
 
   fd = {
