@@ -4,20 +4,26 @@ require 'nokogiri'
 
 class ReXMP
 
-  P_TITLE = %q(//*[name()='dc:title']//*[name()='rdf:Alt']//*[name()='rdf:li'])
-  P_DESCR = %q(//*[name()='dc:description']//*[name()='rdf:Alt']//*[name()='rdf:li'])
-  P_TAGS  = %q(//*[name()='dc:subject']//*[name()='rdf:Seq']//*[name()='rdf:li'])
-  P_RDFD  = %q(//*[name()='rdf:Description'])
+  P_TITLE = %q{//*[name()='dc:title']//*[name()='rdf:Alt']//*[name()='rdf:li']}
+  P_DESCR = %q{//*[name()='dc:description']//*[name()='rdf:Alt']//*[name()='rdf:li']}
+  P_TAGS  = %q{//*[name()='dc:subject']}
+  P_RDFD  = %q{//*[name()='rdf:Description']}
+  P_USERC = %q{//*[name()='exif:UserComment']//*[name()='rdf:Alt']//*[name()='rdf:li']}
+
+  TAG_BAG = %w[Seq Bag Alt]
 
   def initialize ih, filename
     @doc = Nokogiri::XML(File.read filename)
-    STDERR.puts "merge: t=#{title};d=#{descr};lat=#{gpslat};lon=#{gpslon};tt=#{tags}"
-    #xd['Xmp.dc.subject'] = xd['Xmp.dc.subject'].split(/,\s/).concat(ih[:tags]).uniq#.join(',')
+    #tags_merge ['uno', 'due']
+    puts "merge: t=#{title};d=#{descr};lat=#{gpslat};lon=#{gpslon};tt=#{tags};\nih:#{ih} "
+    puts "uc:#{user_comment}"
   end
 
   private
 
-  # @doc.to_xml.to_s.gsub(/\n\s+\n/, "\n")
+  def out
+    @doc.to_xml.to_s.gsub(/\n\s+\n/, "\n")
+  end
 
   def title
     @doc.at_xpath(P_TITLE).content
@@ -51,12 +57,39 @@ class ReXMP
     @doc.at_xpath(P_RDFD).attributes['GPSLongitude'].value = l
   end
 
-  def tags
-    @doc.xpath(P_TAGS).map{ |n| n.content }
+  def user_comment
+    @doc.at_xpath(P_USERC).content
   end
 
-  def tags= tt
-    #@doc.xpath(P_TAGS).map{ |n| n.content }
+  def user_comment= c
+    @doc.at_xpath(P_USERC).content = c
+  end
+
+  def tags
+    return @tags if @tags
+    @tags = @doc.at_xpath(P_TAGS)
+      .children
+      .select{ |c| TAG_BAG.include? c.name }
+      .first
+      .children
+      .select{ |c| c.name == 'li' }
+      .map{ |i| i.content }
+  end
+
+  def tags_merge new_tags
+    old_tags = tags
+    bag_name = @doc.at_xpath(P_TAGS)
+      .children
+      .select{ |c| TAG_BAG.include? c.name }
+      .first.name
+    raw = @doc.at_xpath "#{P_TAGS}//*[name()='rdf:#{bag_name}']"
+    raw.children.remove
+    @tags = old_tags.concat new_tags
+    @tags.concat(new_tags).each do |t|
+      nn = Nokogiri::XML::Node.new 'rdf:li', @doc
+      nn.content = t
+      raw.add_child(nn)
+    end
   end
 
 end
