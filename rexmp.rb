@@ -20,7 +20,12 @@ class ReXMP
     title = ih[:title] if ih[:title] && (title.nil? || title.empty?)
     descr = ih[:descr] if ih[:descr] && (descr.nil? || descr.empty?)
     tags_merge ih[:tags]
-    # TODO: gps
+    unless gpslat && gpslon
+      gpslat = ih[:gps][:lat]
+      gpslon = ih[:gps][:lon]
+    end
+    userc = ih[:data] if ih[:data] && (userc.nil? || userc.empty?)
+
     write
   end
 
@@ -67,11 +72,11 @@ class ReXMP
     @doc.at_xpath(P_RDFD).attributes['GPSLongitude'].value = l
   end
 
-  def user_comment
+  def userc
     @doc.at_xpath(P_USERC).content
   end
 
-  def user_comment= c
+  def userc= c
     @doc.at_xpath(P_USERC).content = c
   end
 
