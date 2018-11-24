@@ -13,10 +13,19 @@ class ReXMP
   TAG_BAG = %w[Seq Bag Alt]
 
   def initialize ih, filename
-    @doc = Nokogiri::XML(File.read filename)
-    #tags_merge ['uno', 'due']
-    puts "merge: t=#{title};d=#{descr};lat=#{gpslat};lon=#{gpslon};tt=#{tags};\nih:#{ih} "
-    puts "uc:#{user_comment}"
+    @filename = filename
+    @doc = Nokogiri::XML(File.read @filename)
+    #puts "merge #{filename}: t=#{title};d=#{descr};lat=#{gpslat};lon=#{gpslon};tt=#{tags}"
+    #puts "json:#{ih.slice(:title, :descr, :gps, :tags)} "
+    title = ih[:title] if ih[:title] && (title.nil? || title.empty?)
+    descr = ih[:descr] if ih[:descr] && (descr.nil? || descr.empty?)
+    tags_merge ih[:tags]
+    # TODO: gps
+    write
+  end
+
+  def write
+    File.open(@filename, 'w') { |f| f.write(out) }
   end
 
   private
@@ -26,7 +35,8 @@ class ReXMP
   end
 
   def title
-    @doc.at_xpath(P_TITLE).content
+    return @title if @title
+    @title = @doc.at_xpath(P_TITLE).content
   end
 
   def title= s
@@ -34,7 +44,7 @@ class ReXMP
   end
 
   def descr
-    @doc.at_xpath(P_DESCR).content
+    d = @doc.at_xpath(P_DESCR) ? d.content : nil
   end
 
   def descr= s
@@ -84,8 +94,8 @@ class ReXMP
       .first.name
     raw = @doc.at_xpath "#{P_TAGS}//*[name()='rdf:#{bag_name}']"
     raw.children.remove
-    @tags = old_tags.concat new_tags
-    @tags.concat(new_tags).each do |t|
+    @tags = old_tags.concat(new_tags).uniq
+    @tags.each do |t|
       nn = Nokogiri::XML::Node.new 'rdf:li', @doc
       nn.content = t
       raw.add_child(nn)
