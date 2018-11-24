@@ -27,6 +27,8 @@ end.parse!
 abort('provide path to jsons') unless o.j
 abort("not a directory: #{o.j}") unless File.directory?(o.j)
 
+require_relative 'rexmp' if o.mx
+
 def geo_fmt s
   coord = s.insert(-7, '.')
   coord.sub(/-\./, '-0.')
@@ -46,13 +48,6 @@ class XmpWriter
     ih[:tags].map! { |t| t.encode xml: :text }
     xmp = ERB.new(@tpl, nil, '-').result_with_hash ih.merge(tk: TK)
     File.open(filename, 'w') { |f| f.write(xmp) }
-  end
-
-  def merge ih, filename
-    raise 'merge is not implemented yet'
-    #xd['Xmp.dc.title'] = ih[:title] unless xh['Xmp.dc.title']
-    #xd['Xmp.dc.description'] = ih[:title] unless xh['Xmp.dc.description']
-    #xd['Xmp.dc.subject'] = xd['Xmp.dc.subject'].split(/,\s/).concat(ih[:tags]).uniq#.join(',')
   end
 
 end
@@ -114,7 +109,7 @@ Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
     if o.ow
       xmp.write ih, sidecar
     elsif o.mx
-      xmp.merge ih, sidecar
+      ReXMP.new(ih, sidecar)
     else
       STDERR.puts "sidecar exist: #{sidecar}"
     end
