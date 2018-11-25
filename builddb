@@ -5,9 +5,10 @@ require 'pp'
 require 'optparse'
 require 'ostruct'
 require 'find'
-require 'exiv2'
+require 'open3'
 require 'dbm'
 require 'date'
+require 'oj'
 
 excl = []
 o = OpenStruct.new
@@ -15,7 +16,6 @@ OptionParser.new do |opts|
   opts.on('-i IMAGES', 'Path to images') { |i| o.i = i }
   opts.on('-e EXCLUDE', 'Exclude paths') { |e| excl << e }
   opts.on('-v', 'Verbose')               { o.v = true }
-  opts.on('-d', 'Debug')                 { o.dbg = true }
 end.parse!
 excl = excl.empty? ? nil : excl.join('|')
 
@@ -23,42 +23,45 @@ abort('provide path to images') unless o.i
 abort("not a directory: #{o.i}") unless File.directory?(o.i)
 
 db = DBM.open('photo', 0644, DBM::WRCREAT)
+
 Find.find(o.i) do |path|
-  next if /\.xmp$/i =~ path
+  next unless File.directory?(path)
   next if excl && /(#{excl})/ =~ path
-  next unless File.file?(path)
-  begin
-    image = Exiv2::ImageFactory.open path
-    image.read_metadata
-  rescue Exiv2::BasicError => e
-    STDERR.puts e
+  puts path if o.v
+  cmd = %Q[exiftool -j -createdate "#{path}"]
+  out, err, st = Open3.capture3 cmd
+  unless st.success?
+    warn "ERR: #{dir} #{err} #{st}"
     next
   end
-  puts path if o.v
-  if o.dbg
-    pp image.exif_data.to_hash if image.exif_data
-    pp image.xmp_data.to_hash  if image.xmp_data
-    pp image.iptc_data.to_hash if image.iptc_data
+  if out.empty?
+    puts 'empty' if o.v
+    next
   end
-  if (d = image.exif_data['Exif.Photo.DateTimeOriginal'])
+  begin
+    jfiles = Oj.load out
+  rescue Oj::ParseError => e
+    warn "bad json? #{e}"
+    next
+  end
+
+  jc = 0
+  jfiles.each do |f|
+    file = f['SourceFile']
+    next if /\.xmp$/i =~ file
+    d = f['CreateDate'] or next
     begin
       date = DateTime.strptime(d, '%Y:%m:%d %H:%M:%S')
     rescue ArgumentError => e
-      STDERR.puts "bad exif date: #{path} #{d} #{e}"
+      warn "bad date format: #{path} #{d} #{e}"
       next
     end
-  elsif (d = image.xmp_data['Xmp.xmp.CreateDate'])
-    begin
-      date = DateTime.iso8601(d)
-    rescue ArgumentError => e
-      STDERR.puts "bad xmp date: #{path} #{d} #{e}"
-      next
-    end
-  else
-    STDERR.puts "no date: #{path}"
-    next
+    puts "#{file} #{date}" if o.v
+    db[ date.to_time.to_i.to_s ] = file
+    jc += 1
   end
-  puts date if o.v
-  db[ date.to_time.to_i.to_s ] = path
+  puts "stored: #{jc}" if o.v
+
 end
+
 db.close

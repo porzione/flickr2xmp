@@ -6,6 +6,7 @@ class XMPRewriter
 
   def initialize ih, filename, opts = {}
     @v = opts[:v]
+    @dry = opts[:dry]
     @filename = filename
     @xmp = MiniExiftool.new @filename
     if @v
@@ -18,7 +19,9 @@ class XMPRewriter
       @xmp.gpslatitude  = ih[:gps][:lat]
       @xmp.gpslongitude = ih[:gps][:lon]
     end
-    @xmp.usercomment = ih[:data] if ih[:data] && @xmp.usercomment.to_s.empty?
+    @xmp.usercomment = ih[:data] if ih[:data] &&
+       @xmp.usercomment.to_s.empty? &&
+       (ih[:data] != @xmp.usercomment)
     if ih[:tags]
       @xmp.subject = if @xmp.subject
                        @xmp.subject.concat(ih[:tags]).uniq
@@ -30,7 +33,6 @@ class XMPRewriter
                      else
                        ih[:tags]
                      end
-
     end
     @xmp.save
 

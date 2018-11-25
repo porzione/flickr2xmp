@@ -1,17 +1,17 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    exiv2 (0.0.8)
     geo_coord (0.1.0)
     mini_exiftool (2.9.0)
+    oj (3.7.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  exiv2
   geo_coord
   mini_exiftool
+  oj
 
 RUBY VERSION
    ruby 2.5.3p105

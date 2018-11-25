@@ -4,7 +4,8 @@
 require 'pp'
 require 'optparse'
 require 'ostruct'
-require 'json'
+require 'find'
+require 'oj'
 require 'date'
 require 'dbm'
 require 'erb'
@@ -39,11 +40,13 @@ end
 xmp = XmpMaker.new
 db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
 
-Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
-  flickr = JSON.parse(File.read path).reject{|k,v| k == 'exif'}
+Find.find(o.j) do |path|
+  next unless /photo_\d+.json$/ =~ path
+  flickr = Oj.load(File.read path).reject{|k,v| k == 'exif'}
 
   date = DateTime.strptime(flickr['date_taken'], '%Y-%m-%d %H:%M:%S')
   file = db[ date.to_time.to_i.to_s ]
+  puts "d:#{date} t:#{date.to_time.to_i} file:#{file}" if o.v
   next unless file
 
   unless flickr['tags'].empty?
@@ -79,7 +82,7 @@ Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
   ih = {
     file:    bn,
     title:   flickr['name'],
-    data:    Base64.strict_encode64(JSON.generate(fd)),
+    data:    Base64.strict_encode64(Oj.dump fd),
     creator: ENV['USER'],
     tags:    tags,
     descr:   flickr['description'].empty? ? nil : flickr['description'],
@@ -93,9 +96,9 @@ Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
     if o.ow
       xmp.write ih, sidecar
     elsif o.mx
-      XMPRewriter.new(ih, sidecar, {v: o.vm})
+      XMPRewriter.new(ih, sidecar, {v: o.vm, dry: o.dry})
     else
-      STDERR.puts "sidecar exist: #{sidecar}"
+      warn "sidecar exist: #{sidecar}"
     end
   else
     xmp.write ih, sidecar
