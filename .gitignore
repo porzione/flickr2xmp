@@ -51,4 +51,10 @@ build-iPhoneSimulator/
 
 *.db
 *.xmp
+*.ORF
 z*
+*gz
+*bz2
+*xz
+testjson
+testxmp

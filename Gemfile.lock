@@ -3,9 +3,7 @@ GEM
   specs:
     exiv2 (0.0.8)
     geo_coord (0.1.0)
-    mini_portile2 (2.3.0)
-    nokogiri (1.8.5)
-      mini_portile2 (~> 2.3.0)
+    mini_exiftool (2.9.0)
 
 PLATFORMS
   ruby
@@ -13,7 +11,7 @@ PLATFORMS
 DEPENDENCIES
   exiv2
   geo_coord
-  nokogiri
+  mini_exiftool
 
 RUBY VERSION
    ruby 2.5.3p105

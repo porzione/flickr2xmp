@@ -1,110 +1,40 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
+require 'mini_exiftool'
 
 class ReXMP
 
-  P_TITLE = %q{//*[name()='dc:title']//*[name()='rdf:Alt']//*[name()='rdf:li']}
-  P_DESCR = %q{//*[name()='dc:description']//*[name()='rdf:Alt']//*[name()='rdf:li']}
-  P_TAGS  = %q{//*[name()='dc:subject']}
-  P_RDFD  = %q{//*[name()='rdf:Description']}
-  P_USERC = %q{//*[name()='exif:UserComment']//*[name()='rdf:Alt']//*[name()='rdf:li']}
-
-  TAG_BAG = %w[Seq Bag Alt]
-
-  def initialize ih, filename
+  def initialize ih, filename, opts = {}
+    @v = opts[:v]
     @filename = filename
-    @doc = Nokogiri::XML(File.read @filename)
-    #puts "merge #{filename}: t=#{title};d=#{descr};lat=#{gpslat};lon=#{gpslon};tt=#{tags}"
-    #puts "json:#{ih.slice(:title, :descr, :gps, :tags)} "
-    title = ih[:title] if ih[:title] && (title.nil? || title.empty?)
-    descr = ih[:descr] if ih[:descr] && (descr.nil? || descr.empty?)
-    tags_merge ih[:tags]
-    unless gpslat && gpslon
-      gpslat = ih[:gps][:lat]
-      gpslon = ih[:gps][:lon]
+    @xmp = MiniExiftool.new @filename
+    if @v
+      puts "> xmp #{filename}: #{@xmp.to_hash.slice('Title','Description','Subject')}"
+      puts "> json:#{ih.slice(:title, :descr, :gps, :tags)} "
     end
-    userc = ih[:data] if ih[:data] && (userc.nil? || userc.empty?)
+    @xmp.title = ih[:title] if ih[:title] && @xmp.title.to_s.empty?
+    @xmp.description = ih[:descr] if ih[:descr] && @xmp.description.to_s.empty?
+    tags_merge ih[:tags]
+    unless @xmp.gpslatitude && @xmp.gpslongitude
+      @xmp.gpslatitude  = ih[:gps][:lat]
+      @xmp.gpslongitude = ih[:gps][:lon]
+    end
+    puts "> uc ih e:#{ih[:data].to_s.empty?} xmp e:#{@xmp.usercomment.to_s.empty?}"
+    @xmp.usercomment = ih[:data] if ih[:data] && @xmp.usercomment.to_s.empty?
 
-    write
+    pp @xmp.to_hash
+    #write
   end
 
   def write
-    File.open(@filename, 'w') { |f| f.write(out) }
+    #File.open(@filename, 'w') { |f| f.write(out) }
   end
 
   private
 
-  def out
-    @doc.to_xml.to_s.gsub(/\n\s+\n/, "\n")
-  end
-
-  def title
-    return @title if @title
-    @title = @doc.at_xpath(P_TITLE).content
-  end
-
-  def title= s
-    @doc.at_xpath(P_TITLE).content = s
-  end
-
-  def descr
-    d = @doc.at_xpath(P_DESCR) ? d.content : nil
-  end
-
-  def descr= s
-    @doc.at_xpath(P_DESCR).content = s
-  end
-
-  def gpslat
-    @doc.at_xpath(P_RDFD).attributes['GPSLatitude'].value
-  end
-
-  def gpslat= l
-    @doc.at_xpath(P_RDFD).attributes['GPSLatitude'].value = l
-  end
-
-  def gpslon
-    @doc.at_xpath(P_RDFD).attributes['GPSLongitude'].value
-  end
-
-  def gpslon= l
-    @doc.at_xpath(P_RDFD).attributes['GPSLongitude'].value = l
-  end
-
-  def userc
-    @doc.at_xpath(P_USERC).content
-  end
-
-  def userc= c
-    @doc.at_xpath(P_USERC).content = c
-  end
-
-  def tags
-    return @tags if @tags
-    @tags = @doc.at_xpath(P_TAGS)
-      .children
-      .select{ |c| TAG_BAG.include? c.name }
-      .first
-      .children
-      .select{ |c| c.name == 'li' }
-      .map{ |i| i.content }
-  end
-
   def tags_merge new_tags
-    old_tags = tags
-    bag_name = @doc.at_xpath(P_TAGS)
-      .children
-      .select{ |c| TAG_BAG.include? c.name }
-      .first.name
-    raw = @doc.at_xpath "#{P_TAGS}//*[name()='rdf:#{bag_name}']"
-    raw.children.remove
-    @tags = old_tags.concat(new_tags).uniq
-    @tags.each do |t|
-      nn = Nokogiri::XML::Node.new 'rdf:li', @doc
-      nn.content = t
-      raw.add_child(nn)
-    end
+    old_tags = @xmp.subject
+    @xmp.subject = old_tags.concat(new_tags).uniq
   end
 
 end
