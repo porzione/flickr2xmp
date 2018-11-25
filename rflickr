@@ -11,6 +11,9 @@ require 'erb'
 require 'base64'
 require 'geo/coord'
 
+require_relative 'xmp_maker'
+require_relative 'xmp_rewriter'
+
 stags = []
 o = OpenStruct.new
 OptionParser.new do |opts|
@@ -28,32 +31,12 @@ end.parse!
 abort('provide path to jsons') unless o.j
 abort("not a directory: #{o.j}") unless File.directory?(o.j)
 
-require_relative 'rexmp' if o.mx
-
 def geo_fmt s
   coord = s.insert(-7, '.')
   coord.sub(/-\./, '-0.')
 end
 
-class XmpWriter
-
-  TK = 'github.com/porzione/flickr2xmp'
-
-  def initialize
-    @tpl = File.read('xmp.erb')
-  end
-
-  def write ih, filename
-    ih[:title].encode!(xml: :text) if ih[:title]
-    ih[:descr].encode!(xml: :text) if ih[:descr]
-    ih[:tags].map! { |t| t.encode xml: :text }
-    xmp = ERB.new(@tpl, nil, '-').result_with_hash ih.merge(tk: TK)
-    File.open(filename, 'w') { |f| f.write(xmp) }
-  end
-
-end
-
-xmp = XmpWriter.new
+xmp = XmpMaker.new
 db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
 
 Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
@@ -110,7 +93,7 @@ Dir.glob(File.join(o.j, 'photo_*.json')).each do |path|
     if o.ow
       xmp.write ih, sidecar
     elsif o.mx
-      ReXMP.new(ih, sidecar, {v: o.vm})
+      XMPRewriter.new(ih, sidecar, {v: o.vm})
     else
       STDERR.puts "sidecar exist: #{sidecar}"
     end
