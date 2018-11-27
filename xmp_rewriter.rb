@@ -35,19 +35,19 @@ class XMPRewriter
   end
 
   def usercomment(data)
-    next if !data || (data == @xmp.usercomment) || @xmp.usercomment.to_s.empty?
+    return if !data || (data == @xmp.usercomment)
 
-    @xmp.usercomment = data
+    @xmp.usercomment = data if @xmp.usercomment.to_s.empty?
   end
 
   def subject(tags)
-    next unless tags
+    return unless tags
 
     @xmp.subject = @xmp.subject ? @xmp.subject.concat(tags).uniq : tags
   end
 
   def hierarchicalsubject(tags)
-    next unless tags
+    return unless tags
 
     hs = @xmp.hierarchicalsubject
     @xmp.hierarchicalsubject = hs ? hs.concat(tags).uniq : tags

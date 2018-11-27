@@ -9,11 +9,19 @@ class XmpMaker
     @tpl = File.read('xmp.erb')
   end
 
-  def write(ihsh, filename)
+  def gen(ihsh)
     ih[:title]&.encode!(xml: :text)
     ih[:descr]&.encode!(xml: :text)
     ih[:tags].map! { |t| t.encode xml: :text }
-    xmp = ERB.new(@tpl, nil, '-').result_with_hash ihsh.merge(tk: TK)
-    File.open(filename, 'w') { |f| f.write(xmp) }
+    ERB.new(@tpl, nil, '-').result_with_hash ihsh.merge(tk: TK)
+  end
+
+  def write(ihsh, filename)
+    content = gen(ihsh)
+    File.open(filename, 'w') { |f| f.write(content) }
+  end
+
+  def str(ihsh)
+    gen(ihsh)
   end
 end

@@ -48,11 +48,11 @@ Find.find(o.j) do |path|
 
   date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
   file = db[date.to_time.to_i.to_s]
-  puts "d:#{date} t:#{date.to_time.to_i} file:#{file}" if o.v
+  puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if o.v
   next unless file
 
   unless fl[:tags].empty?
-    tags = fl[:tags].map { |t| t['tag'] }
+    tags = fl[:tags].map { |t| t[:tag] }
     tags.reject! { |t| stags.include? t } unless stags.empty?
   end
   puts "js: #{file} #{tags}" if o.v
@@ -64,9 +64,9 @@ Find.find(o.j) do |path|
     flickr_faves: fl[:count_faves]
   }
 
-  fd[:albums] = fl[:albums].map(&:title) if fl[:albums].positive?
-  fd[:groups] = fl[:groups].map(&:name) if fl[:groups].positive?
-  fd[:comments] = fl[:comments] if fl[:comments].positive?
+  fd[:albums] = fl[:albums].map { |a| a[:title] } unless fl[:albums].empty?
+  fd[:groups] = fl[:groups].map { |g| g[:name] } if fl[:groups].empty?
+  fd[:comments] = fl[:comments] unless fl[:comments].empty?
 
   if fl[:geo]
     lat = geo_fmt fl[:geo][:latitude]
