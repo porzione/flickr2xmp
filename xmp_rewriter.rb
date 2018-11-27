@@ -14,27 +14,49 @@ class XMPRewriter
       puts "#{filename}: #{@xmp.to_hash.slice(*fields)}"
       puts "js:#{ihsh.slice(:title, :descr, :gps, :tags)} "
     end
-    @xmp.title = ihsh[:title] if ihsh[:title] && @xmp.title.to_s.empty?
-    @xmp.description = ihsh[:descr] if ihsh[:descr] && @xmp.description.to_s.empty?
-    if ihsh[:gps] && !@xmp.gpslatitude && !@xmp.gpslongitude
-      @xmp.gpslatitude  = ihsh[:gps][:lat]
-      @xmp.gpslongitude = ihsh[:gps][:lon]
-    end
-    @xmp.usercomment = ihsh[:data] if ihsh[:data] &&
-                                      @xmp.usercomment.to_s.empty? &&
-                                      (ihsh[:data] != @xmp.usercomment)
-    if ihsh[:tags]
-      @xmp.subject = if @xmp.subject
-                       @xmp.subject.concat(ihsh[:tags]).uniq
-                     else
-                       ihsh[:tags]
-                     end
-      @xmp.hierarchicalsubject = if @xmp.hierarchicalsubject
-                                   @xmp.hierarchicalsubject.concat(ihsh[:tags]).uniq
-                                 else
-                                   ihsh[:tags]
-                                 end
-    end
-    @xmp.save
+    title(ihsh[:title])
+    description(ihsh[:descr])
+    usercomment(ihsh[:data])
+    subject(ihsh[:tags])
+    hierarchicalsubject(ihsh[:tags])
+    gps(ihsh[:gps])
+
+    @xmp.save unless @o.dry
+  end
+
+  private
+
+  def title(title)
+    @xmp.title = title if title && @xmp.title.to_s.empty?
+  end
+
+  def description(descr)
+    @xmp.description = descr if descr && @xmp.description.to_s.empty?
+  end
+
+  def usercomment(data)
+    next if !data || (data == @xmp.usercomment) || @xmp.usercomment.to_s.empty?
+
+    @xmp.usercomment = data
+  end
+
+  def subject(tags)
+    next unless tags
+
+    @xmp.subject = @xmp.subject ? @xmp.subject.concat(tags).uniq : tags
+  end
+
+  def hierarchicalsubject(tags)
+    next unless tags
+
+    hs = @xmp.hierarchicalsubject
+    @xmp.hierarchicalsubject = hs ? hs.concat(tags).uniq : tags
+  end
+
+  def gps(hgps)
+    return unless hgps
+
+    @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude
+    @xmp.gpslongitude = hgps[:lon] unless @xmp.gpslongitude
   end
 end

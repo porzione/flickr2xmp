@@ -83,9 +83,9 @@ Find.find(o.j) do |path|
   end
   next if o.dry
 
-  bn = File.basename file
+  basename = File.basename file
   ih = {
-    file:    bn,
+    file:    basename,
     title:   fl[:name],
     data:    Base64.strict_encode64(Oj.dump(fd)),
     creator: ENV['USER'],
@@ -95,7 +95,7 @@ Find.find(o.j) do |path|
     cdate:   date,
     gps:     gps
   }
-  sidecar = "#{o.wd ? bn : file}.xmp"
+  sidecar = "#{o.wd ? basename : file}.xmp"
   puts "sidecar: #{sidecar}" if o.v
   if File.exist?(sidecar)
     if o.ow
