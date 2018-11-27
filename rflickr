@@ -11,6 +11,7 @@ require 'dbm'
 require 'erb'
 require 'base64'
 require 'geo/coord'
+# require 'active_support/core_ext/hash'
 
 require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
@@ -32,8 +33,8 @@ end.parse!
 abort('provide path to jsons') unless o.j
 abort("not a directory: #{o.j}") unless File.directory?(o.j)
 
-def geo_fmt s
-  coord = s.insert(-7, '.')
+def geo_fmt(str)
+  coord = str.insert(-7, '.')
   coord.sub(/-\./, '-0.')
 end
 
@@ -41,52 +42,56 @@ xmp = XmpMaker.new
 db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
 
 Find.find(o.j) do |path|
-  next unless /photo_\d+.json$/ =~ path
-  flickr = Oj.load(File.read path).reject{|k,v| k == 'exif'}
+  next unless path.match?(/photo_\d+.json$/)
 
-  date = DateTime.strptime(flickr['date_taken'], '%Y-%m-%d %H:%M:%S')
-  file = db[ date.to_time.to_i.to_s ]
+  fl = Oj.load(File.read(path), symbol_keys: true).reject { |k, _| k == :exif }
+
+  date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
+  file = db[date.to_time.to_i.to_s]
   puts "d:#{date} t:#{date.to_time.to_i} file:#{file}" if o.v
   next unless file
 
-  unless flickr['tags'].empty?
-    tags = flickr['tags'].map{ |t| t['tag'] }
-    tags.reject!{ |t| stags.include? t } unless stags.empty?
+  unless fl[:tags].empty?
+    tags = fl[:tags].map { |t| t['tag'] }
+    tags.reject! { |t| stags.include? t } unless stags.empty?
   end
   puts "js: #{file} #{tags}" if o.v
 
   fd = {
-    url: flickr['photopage'],
-    flickr_id: flickr['id'],
-    flickr_views: flickr['count_views'],
-    flickr_faves: flickr['count_faves']
+    url: fl[:photopage],
+    flickr_id: fl[:id],
+    flickr_views: fl[:count_views],
+    flickr_faves: fl[:count_faves]
   }
 
-  fd[:albums] = flickr['albums'].map{|t| t['title']} if flickr['albums'].size > 0
-  fd[:groups] = flickr['groups'].map{|t| t['name']} if flickr['groups'].size > 0
-  fd[:comments] = flickr['comments'] if flickr['comments'].size > 0
+  fd[:albums] = fl[:albums].map(&:title) if fl[:albums].positive?
+  fd[:groups] = fl[:groups].map(&:name) if fl[:groups].positive?
+  fd[:comments] = fl[:comments] if fl[:comments].positive?
 
-  if flickr['geo']
-    lat = geo_fmt flickr['geo']['latitude']
-    lon = geo_fmt flickr['geo']['longitude']
+  if fl[:geo]
+    lat = geo_fmt fl[:geo][:latitude]
+    lon = geo_fmt fl[:geo][:longitude]
     g = Geo::Coord.new lat, lon
     gps = {
       lat: g.strfcoord('%latd,%latm.%lats%lath'),
       lon: g.strfcoord('%lngd,%lngm.%lngs%lngh')
     }
-    puts "https://www.google.com/maps/place/#{lat},#{lon} #{gps[:lat]},#{gps[:lon]}" if o.vg
+    if o.vg
+      url = "https://www.google.com/maps/place/#{lat},#{lon}"
+      puts "#{url} #{gps[:lat]},#{gps[:lon]}"
+    end
   end
   next if o.dry
 
   bn = File.basename file
   ih = {
     file:    bn,
-    title:   flickr['name'],
-    data:    Base64.strict_encode64(Oj.dump fd),
+    title:   fl[:name],
+    data:    Base64.strict_encode64(Oj.dump(fd)),
     creator: ENV['USER'],
     tags:    tags,
-    descr:   flickr['description'].empty? ? nil : flickr['description'],
-    mdate:   DateTime.strptime(flickr['date_imported'], '%Y-%m-%d %H:%M:%S'),
+    descr:   fl[:description].empty? ? nil : fl[:description],
+    mdate:   DateTime.strptime(fl[:date_imported], '%Y-%m-%d %H:%M:%S'),
     cdate:   date,
     gps:     gps
   }
@@ -96,15 +101,13 @@ Find.find(o.j) do |path|
     if o.ow
       xmp.write ih, sidecar
     elsif o.mx
-      XMPRewriter.new(ih, sidecar, {v: o.vm, dry: o.dry})
+      XMPRewriter.new(ih, sidecar, v: o.vm, dry: o.dry)
     else
       warn "sidecar exist: #{sidecar}"
     end
   else
     xmp.write ih, sidecar
   end
-
 end
 
 db.close
-

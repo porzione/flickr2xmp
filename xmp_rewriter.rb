@@ -2,40 +2,39 @@
 
 require 'mini_exiftool'
 
+# xmp merge
 class XMPRewriter
-
-  def initialize ih, filename, opts = {}
+  def initialize(ihsh, filename, opts = {})
     @v = opts[:v]
     @dry = opts[:dry]
     @filename = filename
     @xmp = MiniExiftool.new @filename
     if @v
-      puts "#{filename}: #{@xmp.to_hash.slice('Title','Description','Subject')}"
-      puts "js:#{ih.slice(:title, :descr, :gps, :tags)} "
+      fields = %(Title Description Subject)
+      puts "#{filename}: #{@xmp.to_hash.slice(*fields)}"
+      puts "js:#{ihsh.slice(:title, :descr, :gps, :tags)} "
     end
-    @xmp.title = ih[:title] if ih[:title] && @xmp.title.to_s.empty?
-    @xmp.description = ih[:descr] if ih[:descr] && @xmp.description.to_s.empty?
-    if ih[:gps] && !@xmp.gpslatitude && !@xmp.gpslongitude
-      @xmp.gpslatitude  = ih[:gps][:lat]
-      @xmp.gpslongitude = ih[:gps][:lon]
+    @xmp.title = ihsh[:title] if ihsh[:title] && @xmp.title.to_s.empty?
+    @xmp.description = ihsh[:descr] if ihsh[:descr] && @xmp.description.to_s.empty?
+    if ihsh[:gps] && !@xmp.gpslatitude && !@xmp.gpslongitude
+      @xmp.gpslatitude  = ihsh[:gps][:lat]
+      @xmp.gpslongitude = ihsh[:gps][:lon]
     end
-    @xmp.usercomment = ih[:data] if ih[:data] &&
-       @xmp.usercomment.to_s.empty? &&
-       (ih[:data] != @xmp.usercomment)
-    if ih[:tags]
+    @xmp.usercomment = ihsh[:data] if ihsh[:data] &&
+                                      @xmp.usercomment.to_s.empty? &&
+                                      (ihsh[:data] != @xmp.usercomment)
+    if ihsh[:tags]
       @xmp.subject = if @xmp.subject
-                       @xmp.subject.concat(ih[:tags]).uniq
+                       @xmp.subject.concat(ihsh[:tags]).uniq
                      else
-                       ih[:tags]
+                       ihsh[:tags]
                      end
       @xmp.hierarchicalsubject = if @xmp.hierarchicalsubject
-                       @xmp.hierarchicalsubject.concat(ih[:tags]).uniq
-                     else
-                       ih[:tags]
-                     end
+                                   @xmp.hierarchicalsubject.concat(ihsh[:tags]).uniq
+                                 else
+                                   ihsh[:tags]
+                                 end
     end
     @xmp.save
-
   end
-
 end
