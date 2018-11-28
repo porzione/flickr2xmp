@@ -42,7 +42,7 @@ class ReFlickr
     abort('provide path to jsons') unless @o.j
     abort("not a directory: #{o.j}") unless File.directory?(@o.j)
 
-    @xmp = XmpMaker.new
+    @xmp = XmpMaker.new dry: @o.dry
     @db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
     # @db.close
   end
@@ -59,7 +59,7 @@ class ReFlickr
       if File.exist?(sidecar)
         if @o.ow
           # TODO: dry
-          @xmp.write ih, sidecar
+          @xmp.write(ih, sidecar)
         elsif @o.mx
           XMPRewriter.new(ih, sidecar, v: @o.vm, dry: @o.dry)
         else
@@ -67,7 +67,7 @@ class ReFlickr
         end
       else
         # TODO: dry
-        @xmp.write ih, sidecar
+        @xmp.write(ih, sidecar)
       end
     end
   end
