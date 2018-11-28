@@ -11,7 +11,6 @@ require 'dbm'
 require 'erb'
 require 'base64'
 require 'geo/coord'
-# require 'active_support/core_ext/hash'
 
 require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
@@ -24,6 +23,7 @@ OptionParser.new do |opts|
   opts.on('-m', 'Merge XMP')          { o.mx = true }
   opts.on('-n', 'Dry run')            { o.dry = true }
   opts.on('-v', 'Verbose')            { o.v = true }
+  opts.on('--vv', 'Very verbose')     { o.vv = true }
   opts.on('--vg', 'Verbose gps')      { o.vg = true }
   opts.on('--vm', 'Verbose merge')    { o.vm = true }
   opts.on('--wd', 'XMP in work dir')  { o.wd = true }
@@ -48,8 +48,12 @@ Find.find(o.j) do |path|
 
   date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
   file = db[date.to_time.to_i.to_s]
-  puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if o.v
-  next unless file
+  if file
+    puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if o.v || o.vv
+  else
+    puts "d: #{date} t:#{date.to_time.to_i}" if o.vv
+    next
+  end
 
   unless fl[:tags].empty?
     tags = fl[:tags].map { |t| t[:tag] }

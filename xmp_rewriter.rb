@@ -21,7 +21,7 @@ class XMPRewriter
     hierarchicalsubject(ihsh[:tags])
     gps(ihsh[:gps])
 
-    @xmp.save unless @o.dry
+    @xmp.save unless @dry
   end
 
   private

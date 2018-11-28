@@ -10,9 +10,9 @@ class XmpMaker
   end
 
   def gen(ihsh)
-    ih[:title]&.encode!(xml: :text)
-    ih[:descr]&.encode!(xml: :text)
-    ih[:tags].map! { |t| t.encode xml: :text }
+    ihsh[:title]&.encode!(xml: :text)
+    ihsh[:descr]&.encode!(xml: :text)
+    ihsh[:tags].map! { |t| t.encode xml: :text }
     ERB.new(@tpl, nil, '-').result_with_hash ihsh.merge(tk: TK)
   end
 
