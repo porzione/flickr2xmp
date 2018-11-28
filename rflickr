@@ -11,107 +11,129 @@ require 'dbm'
 require 'erb'
 require 'base64'
 require 'geo/coord'
+require 'active_support/core_ext/hash'
 
 require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
-
-stags = []
-o = OpenStruct.new
-OptionParser.new do |opts|
-  opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
-  opts.on('-o', 'Overwrite')          { o.ow = true }
-  opts.on('-m', 'Merge XMP')          { o.mx = true }
-  opts.on('-n', 'Dry run')            { o.dry = true }
-  opts.on('-v', 'Verbose')            { o.v = true }
-  opts.on('--vv', 'Very verbose')     { o.vv = true }
-  opts.on('--vg', 'Verbose gps')      { o.vg = true }
-  opts.on('--vm', 'Verbose merge')    { o.vm = true }
-  opts.on('--wd', 'XMP in work dir')  { o.wd = true }
-  opts.on('--st TAG', 'Skip tag')     { |t| stags << t }
-end.parse!
-
-abort('provide path to jsons') unless o.j
-abort("not a directory: #{o.j}") unless File.directory?(o.j)
 
 def geo_fmt(str)
   coord = str.insert(-7, '.')
   coord.sub(/-\./, '-0.')
 end
 
-xmp = XmpMaker.new
-db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
+# Flickr import
+class ReFlickr
+  def initialize
+    @stags = []
+    @o = OpenStruct.new
+    OptionParser.new do |opts|
+      opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
+      opts.on('-o', 'Overwrite')          { @o.ow = true }
+      opts.on('-m', 'Merge XMP')          { @o.mx = true }
+      opts.on('-n', 'Dry run')            { @o.dry = true }
+      opts.on('-v', 'Verbose')            { @o.v = true }
+      opts.on('--vv', 'Very verbose')     { @o.vv = true }
+      opts.on('--vg', 'Verbose gps')      { @o.vg = true }
+      opts.on('--vm', 'Verbose merge')    { @o.vm = true }
+      opts.on('--wd', 'XMP in work dir')  { @o.wd = true }
+      opts.on('--st TAG', 'Skip tag')     { |t| @stags << t }
+    end.parse!
 
-Find.find(o.j) do |path|
-  next unless path.match?(/photo_\d+.json$/)
+    abort('provide path to jsons') unless @o.j
+    abort("not a directory: #{o.j}") unless File.directory?(@o.j)
 
-  fl = Oj.load(File.read(path), symbol_keys: true).reject { |k, _| k == :exif }
-
-  date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
-  file = db[date.to_time.to_i.to_s]
-  if file
-    puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if o.v || o.vv
-  else
-    puts "d: #{date} t:#{date.to_time.to_i}" if o.vv
-    next
+    @xmp = XmpMaker.new
+    @db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
+    # @db.close
   end
 
-  unless fl[:tags].empty?
-    tags = fl[:tags].map { |t| t[:tag] }
-    tags.reject! { |t| stags.include? t } unless stags.empty?
+  def go
+    Find.find(@o.j) do |path|
+      next unless path.match?(/photo_\d+.json$/)
+
+      ih, file = process_flickr(path)
+      next unless ih && file
+
+      sidecar = "#{@o.wd ? ih[:basename] : file}.xmp"
+      puts "sidecar: #{sidecar}" if @o.v
+      if File.exist?(sidecar)
+        if @o.ow
+          # TODO: dry
+          @xmp.write ih, sidecar
+        elsif @o.mx
+          XMPRewriter.new(ih, sidecar, v: @o.vm, dry: @o.dry)
+        else
+          warn "sidecar exist: #{sidecar}"
+        end
+      else
+        # TODO: dry
+        @xmp.write ih, sidecar
+      end
+    end
   end
-  puts "js: #{file} #{tags}" if o.v
 
-  fd = {
-    url: fl[:photopage],
-    flickr_id: fl[:id],
-    flickr_views: fl[:count_views],
-    flickr_faves: fl[:count_faves]
-  }
+  def process_geo(geo)
+    return unless geo
 
-  fd[:albums] = fl[:albums].map { |a| a[:title] } unless fl[:albums].empty?
-  fd[:groups] = fl[:groups].map { |g| g[:name] } if fl[:groups].empty?
-  fd[:comments] = fl[:comments] unless fl[:comments].empty?
-
-  if fl[:geo]
-    lat = geo_fmt fl[:geo][:latitude]
-    lon = geo_fmt fl[:geo][:longitude]
-    g = Geo::Coord.new lat, lon
+    lat = geo_fmt geo[:latitude]
+    lon = geo_fmt geo[:longitude]
+    g = Geo::Coord.new(lat, lon)
     gps = {
       lat: g.strfcoord('%latd,%latm.%lats%lath'),
       lon: g.strfcoord('%lngd,%lngm.%lngs%lngh')
     }
-    if o.vg
+    if @o.vg
       url = "https://www.google.com/maps/place/#{lat},#{lon}"
       puts "#{url} #{gps[:lat]},#{gps[:lon]}"
     end
+    gps
   end
-  next if o.dry
 
-  basename = File.basename file
-  ih = {
-    file:    basename,
-    title:   fl[:name],
-    data:    Base64.strict_encode64(Oj.dump(fd)),
-    creator: ENV['USER'],
-    tags:    tags,
-    descr:   fl[:description].empty? ? nil : fl[:description],
-    mdate:   DateTime.strptime(fl[:date_imported], '%Y-%m-%d %H:%M:%S'),
-    cdate:   date,
-    gps:     gps
-  }
-  sidecar = "#{o.wd ? basename : file}.xmp"
-  puts "sidecar: #{sidecar}" if o.v
-  if File.exist?(sidecar)
-    if o.ow
-      xmp.write ih, sidecar
-    elsif o.mx
-      XMPRewriter.new(ih, sidecar, v: o.vm, dry: o.dry)
+  def process_flickr(path)
+    fl = Oj.load(File.read(path), symbol_keys: true).except(:exif)
+    date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
+    file = @db[date.to_time.to_i.to_s]
+    if file
+      puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if @o.v || @o.vv
     else
-      warn "sidecar exist: #{sidecar}"
+      puts "d: #{date} t:#{date.to_time.to_i}" if @o.vv
+      return
     end
-  else
-    xmp.write ih, sidecar
+
+    unless fl[:tags].empty?
+      tags = fl[:tags].map { |t| t[:tag] }
+      tags.reject! { |t| @stags.include? t } unless @stags.empty?
+    end
+    puts "js: #{file} #{tags}" if @o.v
+
+    fd = {
+      url: fl[:photopage],
+      flickr_id: fl[:id],
+      flickr_views: fl[:count_views],
+      flickr_faves: fl[:count_faves]
+    }
+
+    fd[:albums] = fl[:albums].map { |a| a[:title] } unless fl[:albums].empty?
+    fd[:groups] = fl[:groups].map { |g| g[:name] } if fl[:groups].empty?
+    fd[:comments] = fl[:comments] unless fl[:comments].empty?
+
+    gps = process_geo(fl[:geo])
+    [
+      {
+        file:    File.basename(file),
+        title:   fl[:name],
+        data:    Base64.strict_encode64(Oj.dump(fd)),
+        creator: ENV['USER'],
+        tags:    tags,
+        descr:   fl[:description].empty? ? nil : fl[:description],
+        mdate:   DateTime.strptime(fl[:date_imported], '%Y-%m-%d %H:%M:%S'),
+        cdate:   date,
+        gps:     gps
+      },
+      file
+    ]
   end
 end
 
-db.close
+f = ReFlickr.new
+f.go
