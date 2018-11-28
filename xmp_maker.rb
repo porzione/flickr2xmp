@@ -16,6 +16,6 @@ class XmpMaker
     ihsh[:descr]&.encode!(xml: :text)
     ihsh[:tags].map! { |t| t.encode xml: :text }
     content = ERB.new(@tpl, nil, '-').result_with_hash ihsh.merge(tk: TK)
-    @dry ? content : File.open(filename, 'w') { |f| f.write(content) }
+    File.open(filename, 'w') { |f| f.write(content) } unless @dry
   end
 end

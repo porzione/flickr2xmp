@@ -13,11 +13,6 @@ Metrics/CyclomaticComplexity:
 Metrics/PerceivedComplexity:
   Enabled: false
 
-# Metrics/BlockLength:
-#   Exclude:
-#     - 'rflickr'
-#   Enabled: true
-
 Style/DateTime:
   Exclude:
     - 'builddb'

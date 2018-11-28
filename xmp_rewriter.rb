@@ -27,11 +27,16 @@ class XMPRewriter
   private
 
   def title(title)
-    @xmp.title = title if title && @xmp.title.to_s.empty?
+    return unless title
+
+    end
+    @xmp.title = title if @xmp.title.to_s.empty?
   end
 
   def description(descr)
-    @xmp.description = descr if descr && @xmp.description.to_s.empty?
+    return unless descr
+
+    @xmp.description = descr if @xmp.description.to_s.empty?
   end
 
   def usercomment(data)
