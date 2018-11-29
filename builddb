@@ -1,9 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'pp'
 require 'optparse'
-require 'ostruct'
 require 'find'
 require 'open3'
 require 'dbm'
@@ -20,16 +18,16 @@ class Builder
       opts.on('-e EXCLUDE', 'Exclude paths') { |e| @excl << e }
       opts.on('-v', 'Verbose')               { @o.v = true }
     end.parse!
-    @excl = excl.empty? ? nil : excl.join('|')
-
+    @excl = @excl.empty? ? nil : @excl.join('|')
     abort('provide path to images') unless @o.i
-    abort("not a directory: #{o.i}") unless File.directory?(o.i)
+    abort("not a directory: #{@o.i}") unless File.directory?(@o.i)
   end
 
-  def find_files
-    Find.find(o.i) do |path|
+  def run
+    @db = DBM.open('photo', 0o644, DBM::WRCREAT)
+    Find.find(@o.i) do |path|
       next unless File.directory?(path)
-      next if excl && /(#{excl})/ =~ path
+      next if @excl && path.match?(/(#{@excl})/)
 
       puts path if @o.v
       cmd = %(exiftool -j -createdate "#{path}")
@@ -42,53 +40,47 @@ class Builder
         puts 'empty' if @o.v
         next
       end
-      begin
-        jfiles = Oj.load out
-      rescue Oj::ParseError => e
-        warn "bad json? #{e}"
-        next
-      end
-
-      process_jfiles(jfiles, @o.v)
+      parse_files_info(out)
     end
+    @db.close
   end
 
   private
 
-  def process_jfiles(files)
-    db = DBM.open('photo', 0o644, DBM::WRCREAT)
+  def parse_files_info(info)
+    files = Oj.load info
+    process_files(files)
+  rescue Oj::ParseError => e
+    warn "bad json? #{e}"
+  end
+
+  def process_files(files)
     jc = 0
     files.each do |f|
       file = f['SourceFile']
       next if file.match?(/\.xmp$/i)
+      next unless f['CreateDate']
 
       date = parse_date(f['CreateDate']) || next
       # TODO: array for same timestamps
       t = date.to_time.to_i.to_s
-      if db.key?(file)
-        puts "#{file} #{date} is dupe: #{db[t]}" if @o.v
+      if @db.key?(file)
+        puts "#{file} #{date} is dupe: #{@db[t]}" if @o.v
       else
         puts "#{file} #{date}" if @o.v
-        db[t] = file
+        @db[t] = file
       end
       jc += 1
     end
-    puts "stored: #{jc} total: #{db.size}" if @o.v
-    db.close
+    puts "stored: #{jc} total: #{@db.size}" if @o.v
   end
 
-  def process_file(file); end
-
   def parse_date(str)
-    return unless str
-
-    begin
-      return DateTime.strptime(d, '%Y:%m:%d %H:%M:%S')
-    rescue ArgumentError => e
-      warn "bad date format: #{path} #{d} #{e}"
-    end
+    DateTime.strptime(str, '%Y:%m:%d %H:%M:%S')
+  rescue ArgumentError => e
+    warn "bad date format: #{path} #{str} #{e}"
   end
 end
 
 b = Builder.new
-b.find_files
+b.run
