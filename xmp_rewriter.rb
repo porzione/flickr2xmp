@@ -8,7 +8,7 @@ class XMPRewriter
     @v = opts[:v]
     @dry = opts[:dry]
     @filename = filename
-    @xmp = MiniExiftool.new @filename
+    xmp_read
     if @v
       fields = %(Title Description Subject)
       puts "#{filename}: #{@xmp.to_hash.slice(*fields)}"
@@ -25,6 +25,10 @@ class XMPRewriter
   end
 
   private
+
+  def xmp_read
+    @xmp = MiniExiftool.new @filename
+  end
 
   def title(title)
     return unless title

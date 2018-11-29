@@ -1,9 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'pp'
 require 'optparse'
-require 'ostruct'
 require 'find'
 require 'oj'
 require 'date'
@@ -26,11 +24,11 @@ end
 class ReFlickr
   def initialize
     @stags = []
-    @o = OpenStruct.new
+    @o = Struct.new(:j, :ow, :mx, :dry, :v, :vv, :vg, :vm, :wd).new
     OptionParser.new do |opts|
       opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
       opts.on('-o', 'Overwrite')          { @o.ow = true }
-      opts.on('-m', 'Merge XMP')          { @o.mx = true }
+      opts.on('-m', 'Merge XMP (slow)')   { @o.mx = true }
       opts.on('-n', 'Dry run')            { @o.dry = true }
       opts.on('-v', 'Verbose')            { @o.v = true }
       opts.on('--vv', 'Very verbose')     { @o.vv = true }
@@ -55,7 +53,7 @@ class ReFlickr
       ih, file = process_flickr(path)
       next unless ih && file
 
-      sidecar = "#{@o.wd ? ih[:basename] : file}.xmp"
+      sidecar = "#{@o.wd ? ih[:file] : file}.xmp"
       puts "sidecar: #{sidecar}" if @o.v
       if File.exist?(sidecar)
         if @o.ow
