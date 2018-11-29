@@ -11,7 +11,6 @@ class XmpMaker
   end
 
   def write(ihsh, filename)
-    content = gen(ihsh)
     ihsh[:title]&.encode!(xml: :text)
     ihsh[:descr]&.encode!(xml: :text)
     ihsh[:tags].map! { |t| t.encode xml: :text }

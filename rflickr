@@ -88,49 +88,53 @@ class ReFlickr
     gps
   end
 
+  def process_tags(fl_tags)
+    return if fl_tags.empty?
+
+    tags = fl_tags.map { |t| t[:tag] }
+    @stags.empty? ? tags : tags.reject { |t| @stags.include? t }
+  end
+
   def process_flickr(path)
     fl = Oj.load(File.read(path), symbol_keys: true).except(:exif)
     date = DateTime.strptime(fl[:date_taken], '%Y-%m-%d %H:%M:%S')
-    file = @db[date.to_time.to_i.to_s]
-    if file
-      puts "d: #{date} t:#{date.to_time.to_i} file:#{file}" if @o.v || @o.vv
+    log = "d: #{date} t:#{date.to_time.to_i}"
+    if (file = @db[date.to_time.to_i.to_s])
+      puts "#{log} file:#{file}" if @o.v || @o.vv
     else
-      puts "d: #{date} t:#{date.to_time.to_i}" if @o.vv
+      puts log if @o.vv
       return
     end
-
-    unless fl[:tags].empty?
-      tags = fl[:tags].map { |t| t[:tag] }
-      tags.reject! { |t| @stags.include? t } unless @stags.empty?
-    end
+    tags = process_tags(fl[:tags])
     puts "js: #{file} #{tags}" if @o.v
-
-    fd = {
-      url: fl[:photopage],
-      flickr_id: fl[:id],
-      flickr_views: fl[:count_views],
-      flickr_faves: fl[:count_faves]
-    }
-
-    fd[:albums] = fl[:albums].map { |a| a[:title] } unless fl[:albums].empty?
-    fd[:groups] = fl[:groups].map { |g| g[:name] } if fl[:groups].empty?
-    fd[:comments] = fl[:comments] unless fl[:comments].empty?
-
-    gps = process_geo(fl[:geo])
     [
       {
         file:    File.basename(file),
         title:   fl[:name],
-        data:    Base64.strict_encode64(Oj.dump(fd)),
+        data:    Base64.strict_encode64(Oj.dump(flickr_data(fl))),
         creator: ENV['USER'],
         tags:    tags,
         descr:   fl[:description].empty? ? nil : fl[:description],
         mdate:   DateTime.strptime(fl[:date_imported], '%Y-%m-%d %H:%M:%S'),
         cdate:   date,
-        gps:     gps
+        gps:     process_geo(fl[:geo])
       },
       file
     ]
+  end
+
+  def flickr_data(fl_data)
+    f = fl_data
+    fd = {
+      url: f[:photopage],
+      flickr_id: f[:id],
+      flickr_views: f[:count_views],
+      flickr_faves: f[:count_faves]
+    }
+    fd[:albums] = f[:albums].map { |a| a[:title] } unless f[:albums].empty?
+    fd[:groups] = f[:groups].map { |g| g[:name] } if f[:groups].empty?
+    fd[:comments] = f[:comments] unless f[:comments].empty?
+    fd
   end
 end
 

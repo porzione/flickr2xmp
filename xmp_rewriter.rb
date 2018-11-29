@@ -29,7 +29,6 @@ class XMPRewriter
   def title(title)
     return unless title
 
-    end
     @xmp.title = title if @xmp.title.to_s.empty?
   end
 

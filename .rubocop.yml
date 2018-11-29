@@ -2,7 +2,7 @@ Metrics/ClassLength:
   Enabled: false
 
 Metrics/MethodLength:
-  Max: 20
+  Max: 25
 
 Metrics/AbcSize:
   Enabled: false
@@ -23,4 +23,3 @@ Layout/AlignHash:
   Exclude:
     - 'rflickr'
   Enabled: true
-
