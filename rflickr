@@ -47,6 +47,7 @@ class ReFlickr
   end
 
   def go
+    rw = XMPRewriter.new(v: @o.vm, dry: @o.dry)
     Find.find(@o.j) do |path|
       next unless path.match?(/photo_\d+.json$/)
 
@@ -59,7 +60,7 @@ class ReFlickr
         if @o.ow
           @xmp.write(ih, sidecar)
         elsif @o.mx
-          XMPRewriter.new(ih, sidecar, v: @o.vm, dry: @o.dry)
+          rw.add_file(ih, sidecar)
         else
           warn "sidecar exist: #{sidecar}"
         end
@@ -67,6 +68,7 @@ class ReFlickr
         @xmp.write(ih, sidecar)
       end
     end
+    rw.go if @o.mx
   end
 
   def process_geo(geo)
