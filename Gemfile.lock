@@ -12,7 +12,7 @@ GEM
       concurrent-ruby (~> 1.0)
     mini_exiftool (2.9.0)
     minitest (5.11.3)
-    oj (3.7.1)
+    oj (3.7.4)
     thread_safe (0.3.6)
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
