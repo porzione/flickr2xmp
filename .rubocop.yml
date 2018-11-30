@@ -20,6 +20,4 @@ Style/DateTime:
   Enabled: true
 
 Layout/AlignHash:
-  Exclude:
-    - 'rflickr'
-  Enabled: true
+  EnforcedColonStyle: table

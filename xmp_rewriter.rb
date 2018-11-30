@@ -14,11 +14,12 @@ class XMPRewriter
     htags: 'XMP:HierarchicalSubject',
     lat:   'XMP:GPSLatitude',
     lon:   'XMP:GPSLongitude'
-  }
+  }.freeze
 
   def initialize(opts = {})
     @v = opts[:v]
     @dry = opts[:dry]
+    @upd = opts[:u]
     @files = {}
   end
 
@@ -61,56 +62,76 @@ class XMPRewriter
     files.each do |f|
       file = f['SourceFile']
       ih = @files[file]
-      puts "f:#{f.except('XMP:UserComment')}"
-      puts "ih:#{ih.except(:data)}"
-      title(f, ih)
-      #description(ih[:descr])
-      #usercomment(ih[:data])
-      #subject(ih[:tags])
-      #hierarchicalsubject(ih[:tags])
-      #gps(ih[:gps])
+      puts "\nf: #{f.except('XMP:UserComment')}"
+      puts "ih: #{ih.except(:data)}"
+      args = []
+      args << title(f, ih)
+      args << description(f, ih)
+      args << usercomment(f, ih)
+      args << subject(f, ih)
+      args << hierarchicalsubject(f, ih)
+      # gps(ih[:gps])
+      puts "args: #{args.compact}"
     end
   end
 
   def title(xmp, flickr)
-    # xmp['XMP:Title'] flickr[:title]
     x = 'XMP:Title'
-    return unless flickr[:title]
+    s = :title
+    # puts "title f:'#{flickr[s]}' x:'#{xmp[x]}'"
+    return unless flickr[s]
+    return if !xmp[x].to_s.empty? && !@upd
+    return if xmp[x] == flickr[s]
 
-    xmp[x] = flickr[:title] if @xmp.title.to_s.empty?
+    [x, flickr[s]]
   end
 
-  def description(descr)
-    # f['XMP:Description'] :descr
-    return unless descr
+  def description(xmp, flickr)
+    x = 'XMP:Description'
+    s = :descr
+    return unless flickr[s]
+    return if !xmp[x].to_s.empty? && !@upd
+    return if xmp[x] == flickr[s]
 
-    @xmp.description = descr if @xmp.description.to_s.empty?
+    [x, flickr[s]]
   end
 
-  def usercomment(data)
-    # f['XMP:UserComment'] :data
-    return if !data || (data == @xmp.usercomment)
+  def usercomment(xmp, flickr)
+    x = 'XMP:UserComment'
+    s = :data
+    return unless flickr[s]
+    return if !xmp[x].to_s.empty? && !@upd
+    return if xmp[x] == flickr[s]
 
-    @xmp.usercomment = data if @xmp.usercomment.to_s.empty?
+    [x, flickr[s]]
   end
 
-  def subject(tags)
-    # f['XMP:Subject'] :tags
-    return unless tags
+  def subject(xmp, flickr)
+    x = 'XMP:Subject'
+    s = :tags
+    return unless flickr[s]
+    return if !xmp[x].empty? && !@upd
+    return if xmp[x] == flickr[s]
 
-    @xmp.subject = @xmp.subject ? @xmp.subject.concat(tags).uniq : tags
+    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
+    [x, tags.join(',')]
   end
 
-  def hierarchicalsubject(tags)
-    # f['XMP:HierarchicalSubject']
-    return unless tags
+  def hierarchicalsubject(xmp, flickr)
+    x = 'XMP:HierarchicalSubject'
+    s = :tags
+    return unless flickr[s]
+    return if !xmp[x].empty? && !@upd
+    return if xmp[x] == flickr[s]
 
-    hs = @xmp.hierarchicalsubject
-    @xmp.hierarchicalsubject = hs ? hs.concat(tags).uniq : tags
+    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
+    [x, tags.join(',')]
   end
 
-  def gps(hgps)
-    # f['XMP:GPSLatitude'] f['XMP:GPSLongitude'] gps: [:lat :lon]
+  def gps(xmp, flickr)
+    xlat = 'XMP:GPSLatitude'
+    xlon = 'XMP:GPSLongitude'
+    # gps: [:lat :lon]
     return unless hgps
 
     @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude

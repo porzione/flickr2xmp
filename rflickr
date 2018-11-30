@@ -24,11 +24,12 @@ end
 class ReFlickr
   def initialize
     @stags = []
-    @o = Struct.new(:j, :ow, :mx, :dry, :v, :vv, :vg, :vm, :wd).new
+    @o = Struct.new(:j, :ow, :mu, :mx, :dry, :v, :vv, :vg, :vm, :wd).new
     OptionParser.new do |opts|
       opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
       opts.on('-o', 'Overwrite')          { @o.ow = true }
       opts.on('-m', 'Merge XMP (slow)')   { @o.mx = true }
+      opts.on('--mu', 'Update')           { @o.mu = true }
       opts.on('-n', 'Dry run')            { @o.dry = true }
       opts.on('-v', 'Verbose')            { @o.v = true }
       opts.on('--vv', 'Very verbose')     { @o.vv = true }
@@ -43,11 +44,11 @@ class ReFlickr
 
     @xmp = XmpMaker.new dry: @o.dry
     @db = DBM.open('photo', nil, DBM::READER) || abort('Problem with db')
-    # @db.close
+    # TODO: @db.close
   end
 
   def go
-    rw = XMPRewriter.new(v: @o.vm, dry: @o.dry)
+    rw = XMPRewriter.new(v: @o.vm, u: @o.mu, dry: @o.dry)
     Find.find(@o.j) do |path|
       next unless path.match?(/photo_\d+.json$/)
 
@@ -126,10 +127,11 @@ class ReFlickr
   def flickr_data(fl_data)
     f = fl_data
     fd = {
-      url: f[:photopage],
-      flickr_id: f[:id],
-      flickr_views: f[:count_views],
-      flickr_faves: f[:count_faves]
+      type:  'flickr',
+      id:    f[:id],
+      url:   f[:photopage],
+      views: f[:count_views],
+      faves: f[:count_faves]
     }
     fd[:albums] = f[:albums].map { |a| a[:title] } unless f[:albums].empty?
     fd[:groups] = f[:groups].map { |g| g[:name] } if f[:groups].empty?
