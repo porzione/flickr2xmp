@@ -72,19 +72,22 @@ class ReFlickr
     rw.go if @o.mx
   end
 
-  def process_geo(geo)
+  def process_geo(geo, fmt)
     return unless geo
+    raise unless [:dms, :ll].include?(fmt)
 
     lat = geo_fmt geo[:latitude]
     lon = geo_fmt geo[:longitude]
     g = Geo::Coord.new(lat, lon)
     gps = {
       lat: g.strfcoord('%latd,%latm.%lats%lath'),
-      lon: g.strfcoord('%lngd,%lngm.%lngs%lngh')
+      lon: g.strfcoord('%lngd,%lngm.%lngs%lngh'),
+      # TODO: check maker for ll
+      ll:  g
     }
     if @o.vg
       url = "https://www.google.com/maps/place/#{lat},#{lon}"
-      puts "#{url} #{gps[:lat]},#{gps[:lon]}"
+      puts "#{url} #{i}"
     end
     gps
   end

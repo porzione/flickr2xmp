@@ -70,7 +70,7 @@ class XMPRewriter
       args << usercomment(f, ih)
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
-      # gps(ih[:gps])
+      args << gps(f, ih)
       puts "args: #{args.compact}"
     end
   end
@@ -78,7 +78,6 @@ class XMPRewriter
   def title(xmp, flickr)
     x = 'XMP:Title'
     s = :title
-    # puts "title f:'#{flickr[s]}' x:'#{xmp[x]}'"
     return unless flickr[s]
     return if !xmp[x].to_s.empty? && !@upd
     return if xmp[x] == flickr[s]
@@ -124,6 +123,7 @@ class XMPRewriter
     return if !xmp[x].empty? && !@upd
     return if xmp[x] == flickr[s]
 
+    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
     tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
     [x, tags.join(',')]
   end
@@ -131,10 +131,13 @@ class XMPRewriter
   def gps(xmp, flickr)
     xlat = 'XMP:GPSLatitude'
     xlon = 'XMP:GPSLongitude'
-    # gps: [:lat :lon]
-    return unless hgps
+    slat = :lat
+    slon = :lon
+    return unless flickr[:gps]
 
-    @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude
-    @xmp.gpslongitude = hgps[:lon] unless @xmp.gpslongitude
+    puts "GPS: x:#{xmp[xlat]} f:#{flickr[:gps][slat]}"
+
+    # @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude
+    # @xmp.gpslongitude = hgps[:lon] unless @xmp.gpslongitude
   end
 end
