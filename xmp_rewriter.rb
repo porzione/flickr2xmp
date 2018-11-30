@@ -109,9 +109,10 @@ class XMPRewriter
     x = 'XMP:Subject'
     s = :tags
     return unless flickr[s]
-    return if !xmp[x].empty? && !@upd
+    return if xmp[x] && !@upd
     return if xmp[x] == flickr[s]
 
+    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
     tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
     [x, tags.join(',')]
   end
@@ -120,7 +121,7 @@ class XMPRewriter
     x = 'XMP:HierarchicalSubject'
     s = :tags
     return unless flickr[s]
-    return if !xmp[x].empty? && !@upd
+    return if xmp[x] && !@upd
     return if xmp[x] == flickr[s]
 
     xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
@@ -131,11 +132,12 @@ class XMPRewriter
   def gps(xmp, flickr)
     xlat = 'XMP:GPSLatitude'
     xlon = 'XMP:GPSLongitude'
-    slat = :lat
-    slon = :lon
+    f = flickr[:gps] || return
+    flat = f.strfcoord("%lat")
+    flng = f.strfcoord("%lng")
     return unless flickr[:gps]
 
-    puts "GPS: x:#{xmp[xlat]} f:#{flickr[:gps][slat]}"
+    puts "GPS: x:#{xmp[xlat]} f:#{flat}"
 
     # @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude
     # @xmp.gpslongitude = hgps[:lon] unless @xmp.gpslongitude
