@@ -28,7 +28,7 @@ class ReFlickr
     OptionParser.new do |opts|
       opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
       opts.on('-o', 'Overwrite')          { @o.ow = true }
-      opts.on('-m', 'Merge XMP (slow)')   { @o.mx = true }
+      opts.on('-m', 'Merge XMP')          { @o.mx = true }
       opts.on('--mu', 'Update')           { @o.mu = true }
       opts.on('-n', 'Dry run')            { @o.dry = true }
       opts.on('-v', 'Verbose')            { @o.v = true }

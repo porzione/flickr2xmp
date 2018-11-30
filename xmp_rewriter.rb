@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'pp'
 require 'open3'
 require 'oj'
 
@@ -24,11 +23,7 @@ class XMPRewriter
   end
 
   def add_file(ihsh, filename)
-    if @v
-      # fields = %(Title Description Subject)
-      # puts "add rewr: #{filename} #{@xmp.to_hash.slice(*fields)}"
-      puts "js:#{ihsh.slice(:title, :descr, :gps, :tags)} "
-    end
+    puts "add js:#{ihsh.slice(:title, :descr, :gps, :tags)} #{filename}" if @v
     @files[filename] = ihsh
   end
 
@@ -58,20 +53,38 @@ class XMPRewriter
   end
 
   def process_files(files)
-    # pp files[f['SourceFile']]
     files.each do |f|
       file = f['SourceFile']
       ih = @files[file]
-      puts "\nf: #{f.except('XMP:UserComment')}"
-      puts "ih: #{ih.except(:data)}"
+      if @v
+        puts "\nf: #{f.except('XMP:UserComment')}",
+             "ih: #{ih.except(:data)}"
+      end
       args = []
       args << title(f, ih)
       args << description(f, ih)
       args << usercomment(f, ih)
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
-      args << gps(f, ih)
-      puts "args: #{args.compact}"
+      args.concat(gps(f, ih))
+      next if args.empty?
+
+      rewrite(file, args)
+    end
+  end
+
+  def rewrite(file, args)
+    sarg = args.compact.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
+    cmd = "exiftool #{sarg} #{file}"
+    puts "cmd: #{cmd}" if @v
+    return if @dry
+
+    out, err, st = Open3.capture3 cmd
+    if st.success?
+      puts "success: #{out}"
+    else
+      warn "ERR: #{out} #{err} #{st}"
+      return
     end
   end
 
@@ -132,14 +145,16 @@ class XMPRewriter
   def gps(xmp, flickr)
     xlat = 'XMP:GPSLatitude'
     xlon = 'XMP:GPSLongitude'
+    return if xmp[xlat] && xmp[xlon] && !@upd
+
     f = flickr[:gps] || return
-    flat = f.strfcoord("%lat")
-    flng = f.strfcoord("%lng")
-    return unless flickr[:gps]
+    flat = f.strfcoord('%lat')
+    flon = f.strfcoord('%lng')
 
-    puts "GPS: x:#{xmp[xlat]} f:#{flat}"
-
-    # @xmp.gpslatitude  = hgps[:lat] unless @xmp.gpslatitude
-    # @xmp.gpslongitude = hgps[:lon] unless @xmp.gpslongitude
+    puts "GPS: x/f:#{xmp[xlat]}/#{flat} #{xmp[xlon]}/#{flon}" if @v
+    [
+      [xlat, flat],
+      [xlon, flon]
+    ]
   end
 end
