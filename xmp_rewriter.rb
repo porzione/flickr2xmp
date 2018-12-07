@@ -12,11 +12,11 @@ class XMPRewriter
     htags: 'XMP:HierarchicalSubject',
     lat:   'XMP:GPSLatitude',
     lon:   'XMP:GPSLongitude',
-    id:    'XMP:FlickrId',
-    url:   'XMP:FlickrUrl',
-    views: 'XMP:FlickrViews',
-    faves: 'XMP:FlickrFaves',
-    data:  'XMP:Flickr'
+    id:    'XMP-flickr:id',
+    url:   'XMP-flickr:url',
+    views: 'XMP-flickr:views',
+    faves: 'XMP-flickr:faves',
+    data:  'XMP-flickr:data'
   }.freeze
 
   def initialize(opts = {})
@@ -34,11 +34,16 @@ class XMPRewriter
 
   def go
     files = @files.keys.join(' ')
+    if files.empty?
+      warn 'no files to rewrite'
+      return
+    end
     keys = XMP_TAGS.values.map { |k| "-#{k}" }.join(' ')
     cmd = %(exiftool -j -G -n #{keys} #{files})
+    puts cmd if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
-      warn "ERR: #{out} #{err} #{st}"
+      warn "ERR1: #{out} #{err} #{st}"
       return
     end
     if out.empty?
@@ -89,7 +94,7 @@ class XMPRewriter
     if st.success?
       puts "success: #{out}" if @v
     else
-      warn "ERR: #{out} #{err} #{st}"
+      warn "ERR2: #{out} #{err} #{st}"
       return
     end
   end
@@ -121,9 +126,9 @@ class XMPRewriter
   #  flickr: 'XMP:Flickr'
 
   def flickr(xmp, flickr)
-    puts "xmp: #{xmp}"
+    # puts "xmp: #{xmp}"
     fl = flickr[:flickr]
-    puts "fl: #{fl}"
+    # puts "fl: #{fl}"
     res = []
     fl.members.each do |s|
       x = XMP_TAGS[s]

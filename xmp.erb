@@ -6,19 +6,24 @@
     xmlns:xmp="http://ns.adobe.com/xap/1.0/"
     xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
     xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:flickr="http://github.com/porzione/flickr2xmp/"
 <% if gps -%>
     exif:GPSVersionID="2.2.0.0" 
     exif:GPSLatitude="<%= gps[:lat] -%>"
     exif:GPSLongitude="<%= gps[:lon] -%>"
 <% end -%>
+    flickr:id="<%= flickr.id %>"
+    flickr:url="<%= flickr.url %>" 
+    flickr:views="<%= flickr.views %>" 
+    flickr:faves="<%= flickr.faves %>"
     xmpMM:DerivedFrom="<%= file %>">
    <xmp:CreateDate><%= cdate %></xmp:CreateDate>
    <xmp:ModifyDate><%= mdate %></xmp:ModifyDate>
-   <dc:flickr id="<%= flickr.id %>" url="<%= flickr.url %>" views="<%= flickr.views %>" faves="<%= flickr.faves %>">
+   <flickr:data>
     <rdf:Alt>
      <rdf:li xml:lang="x-default"><%= flickr.data %></rdf:li>
     </rdf:Alt>
-   </dc:flickr>
+   </flickr:data>
    <dc:creator>
     <rdf:Seq>
      <rdf:li><%= creator %></rdf:li>
