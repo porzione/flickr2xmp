@@ -8,11 +8,15 @@ class XMPRewriter
   XMP_TAGS = {
     title: 'XMP:Title',
     descr: 'XMP:Description',
-    data:  'XMP:UserComment',
     tags:  'XMP:Subject',
     htags: 'XMP:HierarchicalSubject',
     lat:   'XMP:GPSLatitude',
-    lon:   'XMP:GPSLongitude'
+    lon:   'XMP:GPSLongitude',
+    id:    'XMP:FlickrId',
+    url:   'XMP:FlickrUrl',
+    views: 'XMP:FlickrViews',
+    faves: 'XMP:FlickrFaves',
+    data:  'XMP:Flickr'
   }.freeze
 
   def initialize(opts = {})
@@ -20,6 +24,7 @@ class XMPRewriter
     @dry = opts[:dry]
     @upd = opts[:u]
     @files = {}
+    @cfg = "#{__dir__}/exiftool.pl"
   end
 
   def add_file(ihsh, filename)
@@ -54,6 +59,7 @@ class XMPRewriter
 
   def process_files(files)
     files.each do |f|
+      # puts "process file: #{f}" if @v
       file = f['SourceFile']
       ih = @files[file]
       if @v
@@ -63,7 +69,7 @@ class XMPRewriter
       args = []
       args << title(f, ih)
       args << description(f, ih)
-      args << usercomment(f, ih)
+      args << flickr(f, ih)
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
       args.concat(gps(f, ih))
@@ -75,13 +81,13 @@ class XMPRewriter
 
   def rewrite(file, args)
     sarg = args.compact.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
-    cmd = "exiftool #{sarg} #{file}"
+    cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
     puts "cmd: #{cmd}" if @v
     return if @dry
 
     out, err, st = Open3.capture3 cmd
     if st.success?
-      puts "success: #{out}"
+      puts "success: #{out}" if @v
     else
       warn "ERR: #{out} #{err} #{st}"
       return
@@ -108,14 +114,29 @@ class XMPRewriter
     [x, flickr[s]]
   end
 
-  def usercomment(xmp, flickr)
-    x = 'XMP:UserComment'
-    s = :data
-    return unless flickr[s]
-    return if !xmp[x].to_s.empty? && !@upd
-    return if xmp[x] == flickr[s]
+  #  fl_id:  'XMP:FlickrId',
+  #  fl_url: 'XMP:FlickrUrl',
+  #  fl_v:   'XMP:FlickrViews',
+  #  fl_f:   'XMP:FlickrFaves',
+  #  flickr: 'XMP:Flickr'
 
-    [x, flickr[s]]
+  def flickr(xmp, flickr)
+    puts "xmp: #{xmp}"
+    fl = flickr[:flickr]
+    puts "fl: #{fl}"
+    res = []
+    fl.members.each do |s|
+      x = XMP_TAGS[s]
+      # puts "s:#{s} #{x} #{fl[s]}"
+      res << [x, fl[s]]
+    end
+    res.flatten
+
+    # return unless flickr[s]
+    # return if !xmp[x].to_s.empty? && !@upd
+    # return if xmp[x] == flickr[s]
+
+    # [x, flickr[s]]
   end
 
   def subject(xmp, flickr)
@@ -145,7 +166,8 @@ class XMPRewriter
   def gps(xmp, flickr)
     xlat = 'XMP:GPSLatitude'
     xlon = 'XMP:GPSLongitude'
-    return if xmp[xlat] && xmp[xlon] && !@upd
+    # puts "gps: #{xmp[xlat]} #{xmp[xlon]}" if @v
+    return [] if xmp[xlat] && xmp[xlon] && !@upd
 
     f = flickr[:gps] || return
     flat = f.strfcoord('%lat')
