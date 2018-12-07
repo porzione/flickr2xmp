@@ -14,11 +14,11 @@
     xmpMM:DerivedFrom="<%= file %>">
    <xmp:CreateDate><%= cdate %></xmp:CreateDate>
    <xmp:ModifyDate><%= mdate %></xmp:ModifyDate>
-   <exif:UserComment>
+   <dc:flickr id="<%= flickr.id %>" url="<%= flickr.url %>" views="<%= flickr.views %>" faves="<%= flickr.faves %>">
     <rdf:Alt>
-     <rdf:li xml:lang="x-default"><%= data %></rdf:li>
+     <rdf:li xml:lang="x-default"><%= flickr.data %></rdf:li>
     </rdf:Alt>
-   </exif:UserComment>
+   </dc:flickr>
    <dc:creator>
     <rdf:Seq>
      <rdf:li><%= creator %></rdf:li>
