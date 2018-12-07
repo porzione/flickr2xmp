@@ -115,6 +115,8 @@ class ReFlickr
     ]
   end
 
+  # TODO: consider custom XMP namespace instead of
+  # EXIF:UserComment EXIF:XPComment XMP:UserComment (now)
   def flickr_data(fl_data)
     f = fl_data
     fd = {
