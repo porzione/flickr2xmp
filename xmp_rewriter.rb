@@ -2,6 +2,7 @@
 
 require 'open3'
 require 'oj'
+require 'active_support/core_ext/object/blank'
 
 # xmp merge
 class XMPRewriter
@@ -25,6 +26,7 @@ class XMPRewriter
     @upd = opts[:u]
     @files = {}
     @cfg = "#{__dir__}/exiftool.pl"
+    prepare_flickr
   end
 
   def add_file(ihsh, filename)
@@ -40,10 +42,10 @@ class XMPRewriter
     end
     keys = XMP_TAGS.values.map { |k| "-#{k}" }.join(' ')
     cmd = %(exiftool -config #{@cfg} -j -G -n #{keys} #{files})
-    puts cmd if @v
+    puts "cmd:#{cmd}" if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
-      warn "ERR1: #{out} #{err} #{st}"
+      warn "ERRgo: #{out} #{err} #{st}"
       return
     end
     if out.empty?
@@ -54,6 +56,17 @@ class XMPRewriter
   end
 
   private
+
+  # exiftool output names
+  def prepare_flickr
+    @fl_tags = {}
+    XMP_TAGS.each_pair do |s, tag|
+      if (m = tag.match(/^XMP-flickr:(?<name>\w+)$/))
+        @fl_tags[s] = "XMP:#{m['name'].capitalize}"
+      end
+    end
+    @fl_tags.freeze
+  end
 
   def parse_meta(info)
     files = Oj.load info
@@ -78,6 +91,8 @@ class XMPRewriter
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
       args.concat(gps(f, ih))
+      args = args.compact.flatten(1)
+      # puts "args: #{args}"
       next if args.empty?
 
       rewrite(file, args)
@@ -85,7 +100,8 @@ class XMPRewriter
   end
 
   def rewrite(file, args)
-    sarg = args.compact.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
+    puts "rewrite args:#{args}"
+    sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
     cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
     puts "cmd: #{cmd}" if @v
     return if @dry
@@ -94,7 +110,7 @@ class XMPRewriter
     if st.success?
       puts "success: #{out}" if @v
     else
-      warn "ERR2: #{out} #{err} #{st}"
+      warn "ERRew: #{out} #{err} #{st}"
       return
     end
   end
@@ -119,27 +135,19 @@ class XMPRewriter
     [x, flickr[s]]
   end
 
-  #  fl_id:  'XMP:FlickrId',
-  #  fl_url: 'XMP:FlickrUrl',
-  #  fl_v:   'XMP:FlickrViews',
-  #  fl_f:   'XMP:FlickrFaves',
-  #  flickr: 'XMP:Flickr'
-
   def flickr(xmp, flickr)
     fl = flickr[:flickr]
-    puts "xmp: #{xmp}"
-    # puts "fl: #{fl}"
     res = []
     fl.members.each do |s|
-      x = XMP_TAGS[s]
+      x = @fl_tags[s]
       next unless fl[s]
-      next if !xmp[x].to_s.empty? && !@upd
-      next if xmp[x] == fl[s]
+      next if xmp[x].to_s == fl[s]
 
-      puts "s:#{s} x:#{x} fl:#{fl[s]} xmp:#{xmp[x]}"
+      # puts "fl[#{s}]:#{fl[s]}.#{fl[s].class}"
+      # puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
       res << [x, fl[s]]
     end
-    res.flatten
+    res
   end
 
   def subject(xmp, flickr)
@@ -156,7 +164,7 @@ class XMPRewriter
 
   def hierarchicalsubject(xmp, flickr)
     x = 'XMP:HierarchicalSubject'
-    s = :tags
+    s = :htags
     return unless flickr[s]
     return if xmp[x] && !@upd
     return if xmp[x] == flickr[s]
