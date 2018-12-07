@@ -39,7 +39,7 @@ class XMPRewriter
       return
     end
     keys = XMP_TAGS.values.map { |k| "-#{k}" }.join(' ')
-    cmd = %(exiftool -j -G -n #{keys} #{files})
+    cmd = %(exiftool -config #{@cfg} -j -G -n #{keys} #{files})
     puts cmd if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
@@ -126,22 +126,20 @@ class XMPRewriter
   #  flickr: 'XMP:Flickr'
 
   def flickr(xmp, flickr)
-    # puts "xmp: #{xmp}"
     fl = flickr[:flickr]
+    puts "xmp: #{xmp}"
     # puts "fl: #{fl}"
     res = []
     fl.members.each do |s|
       x = XMP_TAGS[s]
-      # puts "s:#{s} #{x} #{fl[s]}"
+      next unless fl[s]
+      next if !xmp[x].to_s.empty? && !@upd
+      next if xmp[x] == fl[s]
+
+      puts "s:#{s} x:#{x} fl:#{fl[s]} xmp:#{xmp[x]}"
       res << [x, fl[s]]
     end
     res.flatten
-
-    # return unless flickr[s]
-    # return if !xmp[x].to_s.empty? && !@upd
-    # return if xmp[x] == flickr[s]
-
-    # [x, flickr[s]]
   end
 
   def subject(xmp, flickr)

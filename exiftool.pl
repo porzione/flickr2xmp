@@ -6,10 +6,6 @@
   NAMESPACE => 'flickr',
 );
 %Image::ExifTool::UserDefined = (
-  'Image::ExifTool::XMP::pdfx' => {
-    document_id => { Writable => 'string', },
-    description => { Writable => 'string', },
-  },
   'Image::ExifTool::XMP::flickr' => {
     id        => { Writable => 'integer' },
     url       => { Writable => 'string' },
