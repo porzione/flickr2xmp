@@ -3,6 +3,7 @@
 require 'open3'
 require 'oj'
 require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/hash'
 
 # xmp merge
 class XMPRewriter
@@ -45,7 +46,7 @@ class XMPRewriter
     puts "cmd:#{cmd}" if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
-      warn "ERRgo: #{out} #{err} #{st}"
+      warn "ERR go: #{out} #{err} #{st}"
       return
     end
     if out.empty?
@@ -90,7 +91,7 @@ class XMPRewriter
       flickr(f, ih) { |t| args << t }
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
-      args.concat(gps(f, ih))
+      gps(f, ih) { |g| args << g }
       args.compact!
       # puts "args: #{args}"
       next if args.empty?
@@ -100,7 +101,7 @@ class XMPRewriter
   end
 
   def rewrite(file, args)
-    puts "rewrite args:#{args}"
+    puts "rewrite args:#{args.reject{ |i| i[0] == 'XMP:Data' }}"
     sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
     cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
     puts "cmd: #{cmd}" if @v
@@ -110,14 +111,14 @@ class XMPRewriter
     if st.success?
       puts "success: #{out}" if @v
     else
-      warn "ERRew: #{out} #{err} #{st}"
+      warn "ERR rew: #{out} #{err} #{st}"
       return
     end
   end
 
   def title(xmp, flickr)
-    x = 'XMP:Title'
     s = :title
+    x = XMP_TAGS[s]
     return unless flickr[s]
     return if !xmp[x].to_s.empty? && !@upd
     return if xmp[x] == flickr[s]
@@ -126,13 +127,54 @@ class XMPRewriter
   end
 
   def description(xmp, flickr)
-    x = 'XMP:Description'
     s = :descr
+    x = XMP_TAGS[s]
     return unless flickr[s]
     return if !xmp[x].to_s.empty? && !@upd
     return if xmp[x] == flickr[s]
 
     [x, flickr[s]]
+  end
+
+  def subject(xmp, flickr)
+    s = :tags
+    x = XMP_TAGS[s]
+    return unless flickr[s]
+    return if xmp[x] && !@upd
+    return if xmp[x] == flickr[s]
+
+    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
+    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
+    [x, tags.join(',')]
+  end
+
+  def hierarchicalsubject(xmp, flickr)
+    s = :htags
+    x = XMP_TAGS[s]
+    return unless flickr[s]
+    return if xmp[x] && !@upd
+    return if xmp[x] == flickr[s]
+
+    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
+    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
+    [x, tags.join(',')]
+  end
+
+  def gps(xmp, flickr)
+    raise unless block_given?
+
+    fgps = flickr[:gps] || return
+    [
+      { s: :lat, f: '%lat' },
+      { s: :lon, f: '%lng' }
+    ].each do |x|
+      next if xmp[x[:t]] && !@upd
+
+      s = XMP_TAGS[x[:s]]
+      fmt = fgps.strfcoord(x[:f])
+      puts "GPS: #{s} #{fmt}" if @v
+      yield [s, fmt]
+    end
   end
 
   def flickr(xmp, flickr)
@@ -148,46 +190,5 @@ class XMPRewriter
       # puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
       yield [x, fl[s]]
     end
-  end
-
-  def subject(xmp, flickr)
-    x = 'XMP:Subject'
-    s = :tags
-    return unless flickr[s]
-    return if xmp[x] && !@upd
-    return if xmp[x] == flickr[s]
-
-    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
-    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
-    [x, tags.join(',')]
-  end
-
-  def hierarchicalsubject(xmp, flickr)
-    x = 'XMP:HierarchicalSubject'
-    s = :htags
-    return unless flickr[s]
-    return if xmp[x] && !@upd
-    return if xmp[x] == flickr[s]
-
-    xmp[x] = [xmp[x]] unless xmp[x].is_a?(Array)
-    tags = xmp[x] ? xmp[x].concat(flickr[s]).uniq : flickr[s]
-    [x, tags.join(',')]
-  end
-
-  def gps(xmp, flickr)
-    xlat = 'XMP:GPSLatitude'
-    xlon = 'XMP:GPSLongitude'
-    # puts "gps: #{xmp[xlat]} #{xmp[xlon]}" if @v
-    return [] if xmp[xlat] && xmp[xlon] && !@upd
-
-    f = flickr[:gps] || return
-    flat = f.strfcoord('%lat')
-    flon = f.strfcoord('%lng')
-
-    puts "GPS: x/f:#{xmp[xlat]}/#{flat} #{xmp[xlon]}/#{flon}" if @v
-    [
-      [xlat, flat],
-      [xlon, flon]
-    ]
   end
 end

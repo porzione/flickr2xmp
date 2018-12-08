@@ -3,7 +3,7 @@
 %Image::ExifTool::XMP::flickr = (
   %xmpTableDefaults,
   GROUPS    => { 0 => 'XMP', 1 => 'XMP-flickr', 2 => 'Image' },
-  NAMESPACE => 'flickr',
+  NAMESPACE => { 'flickr' => 'http://github.com/porzione/flickr2xmp/' },
 );
 %Image::ExifTool::UserDefined = (
   'Image::ExifTool::XMP::flickr' => {
