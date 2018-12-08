@@ -23,6 +23,7 @@ class XMPRewriter
 
   def initialize(opts = {})
     @v = opts[:v]
+    @vv = opts[:vv]
     @dry = opts[:dry]
     @upd = opts[:u]
     @files = {}
@@ -31,7 +32,11 @@ class XMPRewriter
   end
 
   def add_file(ihsh, filename)
-    puts "add js:#{ihsh.slice(:title, :descr, :gps, :tags)} #{filename}" if @v
+    if @v
+      h = ihsh.slice(:title, :descr, :gps, :tags)
+      h[:gps] = h[:gps].to_s(dms: false)
+      puts "add js:#{h} #{filename}" 
+    end
     @files[filename] = ihsh
   end
 
@@ -43,7 +48,7 @@ class XMPRewriter
     end
     keys = XMP_TAGS.values.map { |k| "-#{k}" }.join(' ')
     cmd = %(exiftool -config #{@cfg} -j -G -n #{keys} #{files})
-    puts "cmd:#{cmd}" if @v
+    puts "cmd read: #{cmd}" if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
       warn "ERR go: #{out} #{err} #{st}"
@@ -81,9 +86,9 @@ class XMPRewriter
       # puts "process file: #{f}" if @v
       file = f['SourceFile']
       ih = @files[file]
-      if @v
-        puts "\nf: #{f.except('XMP:UserComment')}",
-             "ih: #{ih.except(:data)}"
+      if @vv
+        puts "\nf: #{f}",
+             "ih: #{ih}"
       end
       args = []
       args << title(f, ih)
@@ -101,10 +106,10 @@ class XMPRewriter
   end
 
   def rewrite(file, args)
-    puts "rewrite args:#{args.reject { |i| i[0] == 'XMP:Data' }}"
+    puts "rewrite args:#{args.reject { |i| i[0] == 'XMP:Data' }}" if @vv
     sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
     cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
-    puts "cmd: #{cmd}" if @v
+    puts "cmd write: #{cmd}" if @v
     return if @dry
 
     out, err, st = Open3.capture3 cmd
@@ -163,16 +168,19 @@ class XMPRewriter
   def gps(xmp, flickr)
     raise unless block_given?
 
+    puts "gps: #{xmp['SourceFile']}"
     fgps = flickr[:gps] || return
     [
       { s: :lat, f: '%lat' },
       { s: :lon, f: '%lng' }
-    ].each do |x|
-      next if xmp[x[:t]] && !@upd
+    ].each do |i|
+      next if xmp[i[:t]] && !@upd
 
-      s = XMP_TAGS[x[:s]]
-      fmt = fgps.strfcoord(x[:f])
-      puts "GPS: #{s} #{fmt}" if @v
+      s = XMP_TAGS[i[:s]]
+      fmt = fgps.strfcoord(i[:f])
+      puts "gps: #{i[:s]} js:#{fmt} xmp:#{xmp[s]}" if @v
+      next if fmt == xmp[s].to_s
+
       yield [s, fmt]
     end
   end
