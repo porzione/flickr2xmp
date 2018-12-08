@@ -13,12 +13,14 @@ class XmpMaker
   def write(ihsh, filename)
     ihsh[:title]&.encode!(xml: :text)
     ihsh[:descr]&.encode!(xml: :text)
-    ihsh[:tags].map! { |t| t.encode xml: :text }
+    ihsh[:tags]&.map! { |t| t.encode xml: :text }
     ihsh[:tk] = TK
-    ihsh[:gps] = {
-      lat: ihsh[:gps].strfcoord('%latd,%latm.%lats%lath'),
-      lon: ihsh[:gps].strfcoord('%lngd,%lngm.%lngs%lngh')
-    }
+    if ihsh[:gps]
+      ihsh[:gps] = {
+        lat: ihsh[:gps].strfcoord('%latd,%latm.%lats%lath'),
+        lon: ihsh[:gps].strfcoord('%lngd,%lngm.%lngs%lngh')
+      }
+    end
     xmp = ERB.new(@tpl, nil, '-').result_with_hash ihsh
     File.open(filename, 'w') { |f| f.write(xmp) } unless @dry
   end

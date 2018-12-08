@@ -16,13 +16,7 @@ require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
 
 def geo_fmt(str)
-  if str.include?('.')
-    # already in normal form
-    str
-  else
-    coord = str.insert(-7, '.')
-    coord.sub(/-\./, '-0.')
-  end
+  str.include?('.') ? str : str.insert(-7, '.').sub(/-\./, '-0.')
 end
 
 # Flickr import
