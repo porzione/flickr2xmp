@@ -101,7 +101,7 @@ class XMPRewriter
   end
 
   def rewrite(file, args)
-    puts "rewrite args:#{args.reject{ |i| i[0] == 'XMP:Data' }}"
+    puts "rewrite args:#{args.reject { |i| i[0] == 'XMP:Data' }}"
     sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
     cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
     puts "cmd: #{cmd}" if @v
