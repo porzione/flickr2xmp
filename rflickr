@@ -10,14 +10,19 @@ require 'erb'
 require 'base64'
 require 'geo/coord'
 require 'active_support/core_ext/hash'
-# require 'active_support/core_ext/object/blank'
+require 'active_support/core_ext/object/blank'
 
 require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
 
 def geo_fmt(str)
-  coord = str.insert(-7, '.')
-  coord.sub(/-\./, '-0.')
+  if str.include?('.')
+    # already in normal form
+    str
+  else
+    coord = str.insert(-7, '.')
+    coord.sub(/-\./, '-0.')
+  end
 end
 
 # Flickr import
@@ -127,9 +132,9 @@ class ReFlickr
       faves: data[:count_faves]
     )
     d = {}
-    d[:albums] = data[:albums].map { |a| a[:title] } unless data[:albums].empty?
-    d[:groups] = data[:groups].map { |g| g[:name] } if data[:groups].empty?
-    d[:comments] = data[:comments] unless data[:comments].empty?
+    d[:albums] = data[:albums].map { |a| a[:title] } unless data[:albums].blank?
+    d[:groups] = data[:groups].map { |g| g[:name] } unless data[:groups].blank?
+    d[:comments] = data[:comments] unless data[:comments].blank?
     f.data = Base64.strict_encode64(Oj.dump(d)) unless d.empty?
     f
   end

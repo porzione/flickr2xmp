@@ -15,15 +15,19 @@
     flickr:id="<%= flickr.id %>"
     flickr:url="<%= flickr.url %>" 
     flickr:views="<%= flickr.views %>" 
+<% if flickr.faves -%>
     flickr:faves="<%= flickr.faves %>"
+<% end -%>
     xmpMM:DerivedFrom="<%= file %>">
    <xmp:CreateDate><%= cdate %></xmp:CreateDate>
    <xmp:ModifyDate><%= mdate %></xmp:ModifyDate>
+<% if flickr.data -%>
    <flickr:data>
     <rdf:Alt>
      <rdf:li xml:lang="x-default"><%= flickr.data %></rdf:li>
     </rdf:Alt>
    </flickr:data>
+<% end -%>
    <dc:creator>
     <rdf:Seq>
      <rdf:li><%= creator %></rdf:li>

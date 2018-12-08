@@ -2,7 +2,7 @@
 
 # build simple images database 'photo.db' from given path 
 
-./builddb -i /home/ftp/images/test -v -e darktable_exported > z_log 2> z_errlog
+./builddb -i /home/ftp/images -v -e darktable_exported -e '2007/Italia' > z_log 2> z_errlog
 
 # dump database contents
 

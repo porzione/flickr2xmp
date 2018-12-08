@@ -26,7 +26,8 @@ per_page = 200
 page = 1
 
 Flickr = Struct.new(
-  :id, :name, :description, :count_views, :count_faves, :date_taken,
+  :id, :name, :description, :count_views,
+  :date_taken, :date_imported,
   :photopage, :tags, :geo,
   keyword_init: true
 )
@@ -42,25 +43,20 @@ loop do
   photos.each do |photo|
     r = flickr.photos.getInfo(photo_id: photo.id)
     fl = Flickr.new(
-      id:          r.id,
-      name:        r.title,
-      description: r.description,
-      date_taken:  r.dates['taken'],
-      count_views: r.views,
-      tags:        r.tags.map { |t| { 'tag' => t['raw'] } },
-      photopage:   r.urls[0]['_content']
+      id:            r.id,
+      name:          r.title,
+      description:   r.description,
+      date_taken:    r.dates['taken'],
+      date_imported: Time.at(r.dateuploaded.to_i).strftime('%Y-%m-%d %H:%M:%S'),
+      count_views:   r.views,
+      tags:          r.tags.map { |t| { 'tag' => t['raw'] } },
+      photopage:     r.urls[0]['_content']
     )
+    # TODO: flickr dump format
     if r.respond_to?(:location)
       fl.geo = r.location.to_hash.slice('latitude', 'longitude', 'accuracy')
     end
-    puts "#{fl.photopage} #{fl.date_taken}"
-    #r = flickr.stats.getPhotoStats(
-    #  photo_id: photo.id,
-    #  date:     Time.now.strftime('%F')
-    #)
-    #p r
-    #fl.count_faves = r.favorites
-    # pp fl
+    puts fl.photopage
     path = "photo_#{photo.id}.json"
     path = File.join(o.j, path) if o.j
     File.write(path, Oj.dump(fl.to_h, indent: 2, mode: :compat))

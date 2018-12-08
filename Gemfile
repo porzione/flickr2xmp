@@ -7,4 +7,4 @@ gem 'geo_coord'
 gem 'mini_exiftool'
 gem 'activesupport'
 
-gem 'flickraw' #, github: 'hanklords/flickraw', ref: '6bf2546'
+gem 'flickraw' #, github: 'hanklords/flickraw'
