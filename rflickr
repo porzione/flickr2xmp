@@ -49,7 +49,8 @@ class ReFlickr
   end
 
   def go
-    rw = XMPRewriter.new(v: @o.vm, vv: @o.vv, u: @o.mu, dry: @o.dry)
+    rw = XMPRewriter.new(v: @o.vm, vv: @o.vv, vg: @o.vg,
+                         u: @o.mu, dry: @o.dry)
     mxc = 0
     Find.find(@o.j) do |path|
       next unless path.match?(/photo_\d+.json$/)

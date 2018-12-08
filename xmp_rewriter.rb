@@ -23,6 +23,7 @@ class XMPRewriter
 
   def initialize(opts = {})
     @v = opts[:v]
+    @vg = opts[:vg]
     @vv = opts[:vv]
     @dry = opts[:dry]
     @upd = opts[:u]
@@ -34,7 +35,7 @@ class XMPRewriter
   def add_file(ihsh, filename)
     if @v
       h = ihsh.slice(:title, :descr, :gps, :tags)
-      h[:gps] = h[:gps].to_s(dms: false)
+      h[:gps] = h[:gps]&.to_s(dms: false)
       puts "add js:#{h} #{filename}"
     end
     @files[filename] = ihsh
@@ -168,7 +169,7 @@ class XMPRewriter
   def gps(xmp, flickr)
     raise unless block_given?
 
-    puts "gps: #{xmp['SourceFile']}"
+    puts "gps: #{xmp['SourceFile']}" if @vg
     fgps = flickr[:gps] || return
     [
       { s: :lat, f: '%lat' },
@@ -178,7 +179,7 @@ class XMPRewriter
 
       s = XMP_TAGS[i[:s]]
       fmt = fgps.strfcoord(i[:f])
-      puts "gps: #{i[:s]} js:#{fmt} xmp:#{xmp[s]}" if @v
+      puts "gps: #{i[:s]} js:#{fmt} xmp:#{xmp[s]}" if @vg
       next if fmt == xmp[s].to_s
 
       yield [s, fmt]
@@ -194,8 +195,10 @@ class XMPRewriter
       next unless fl[s]
       next if xmp[x].to_s == fl[s]
 
-      # puts "fl[#{s}]:#{fl[s]}.#{fl[s].class}"
-      # puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
+      if @vv
+        puts "fl[#{s}]:#{fl[s]}.#{fl[s].class}"
+        puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
+      end
       yield [x, fl[s]]
     end
   end
