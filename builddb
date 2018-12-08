@@ -61,7 +61,7 @@ class Builder
       next if file.match?(/\.xmp$/i)
       next unless f['CreateDate']
 
-      date = parse_date(f['CreateDate']) || next
+      date = parse_date(f['CreateDate'], file) || next
       # TODO: array for same timestamps
       t = date.to_time.to_i.to_s
       if @db.key?(file)
@@ -75,7 +75,7 @@ class Builder
     puts "stored: #{jc} total: #{@db.size}" if @o.v
   end
 
-  def parse_date(str)
+  def parse_date(str, path)
     DateTime.strptime(str, '%Y:%m:%d %H:%M:%S')
   rescue ArgumentError => e
     warn "bad date format: #{path} #{str} #{e}"
