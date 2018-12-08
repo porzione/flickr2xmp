@@ -47,6 +47,13 @@
 <%   end -%>
     </rdf:Seq>
    </dc:subject>
+   <lr:hierarchicalSubject>
+    <rdf:Seq>
+<%   tags.each do |tag| -%>
+     <rdf:li><%= tag %></rdf:li>
+<%   end -%>
+    </rdf:Seq>
+   </lr:hierarchicalSubject>
 <% end -%>
   </rdf:Description>
  </rdf:RDF>

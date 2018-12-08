@@ -87,11 +87,11 @@ class XMPRewriter
       args = []
       args << title(f, ih)
       args << description(f, ih)
-      args << flickr(f, ih)
+      flickr(f, ih) { |t| args << t }
       args << subject(f, ih)
       args << hierarchicalsubject(f, ih)
       args.concat(gps(f, ih))
-      args = args.compact.flatten(1)
+      args.compact!
       # puts "args: #{args}"
       next if args.empty?
 
@@ -136,8 +136,9 @@ class XMPRewriter
   end
 
   def flickr(xmp, flickr)
+    raise unless block_given?
+
     fl = flickr[:flickr]
-    res = []
     fl.members.each do |s|
       x = @fl_tags[s]
       next unless fl[s]
@@ -145,9 +146,8 @@ class XMPRewriter
 
       # puts "fl[#{s}]:#{fl[s]}.#{fl[s].class}"
       # puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
-      res << [x, fl[s]]
+      yield [x, fl[s]]
     end
-    res
   end
 
   def subject(xmp, flickr)
