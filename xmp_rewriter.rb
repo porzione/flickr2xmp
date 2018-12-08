@@ -35,7 +35,7 @@ class XMPRewriter
     if @v
       h = ihsh.slice(:title, :descr, :gps, :tags)
       h[:gps] = h[:gps].to_s(dms: false)
-      puts "add js:#{h} #{filename}" 
+      puts "add js:#{h} #{filename}"
     end
     @files[filename] = ihsh
   end

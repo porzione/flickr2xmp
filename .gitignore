@@ -53,9 +53,11 @@ build-iPhoneSimulator/
 *.xmp
 *.xmp_original
 *.ORF
+*.json
 z*
 *gz
 *bz2
 *xz
 testjson
 testxmp
+flickr.yml

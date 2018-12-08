@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'pp'
+require 'optparse'
+require 'yaml'
+require 'active_support/core_ext/hash'
+require 'flickraw'
+require 'oj'
+
+o = Struct.new(:j).new
+OptionParser.new do |opts|
+  opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
+end.parse!
+abort "No dir '#{o.j}'" if o.j && !Dir.exist?(o.j)
+
+cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
+
+FlickRaw.api_key = cfg[:api][:key]
+FlickRaw.shared_secret = cfg[:api][:secret]
+
+flickr.access_token  = cfg[:api][:access][:token]
+flickr.access_secret = cfg[:api][:access][:secret]
+
+per_page = 200
+page = 1
+
+Flickr = Struct.new(
+  :id, :name, :description, :count_views, :count_faves, :date_taken,
+  :photopage, :tags, :geo,
+  keyword_init: true
+)
+# :groups, :albums, :comments
+
+loop do
+  puts "page: #{page}"
+  photos = flickr.people.getPhotos(
+    user_id:  cfg[:user_id],
+    page:     page,
+    per_page: per_page
+  )
+  photos.each do |photo|
+    r = flickr.photos.getInfo(photo_id: photo.id)
+    fl = Flickr.new(
+      id:          r.id,
+      name:        r.title,
+      description: r.description,
+      date_taken:  r.dates['taken'],
+      count_views: r.views,
+      tags:        r.tags.map { |t| { 'tag' => t['raw'] } },
+      photopage:   r.urls[0]['_content']
+    )
+    if r.respond_to?(:location)
+      fl.geo = r.location.to_hash.slice('latitude', 'longitude', 'accuracy')
+    end
+    puts "#{fl.photopage} #{fl.date_taken}"
+    #r = flickr.stats.getPhotoStats(
+    #  photo_id: photo.id,
+    #  date:     Time.now.strftime('%F')
+    #)
+    #p r
+    #fl.count_faves = r.favorites
+    # pp fl
+    path = "photo_#{photo.id}.json"
+    path = File.join(o.j, path) if o.j
+    File.write(path, Oj.dump(fl.to_h, indent: 2, mode: :compat))
+  end
+  break unless photos.length == per_page
+
+  page += 1
+end
