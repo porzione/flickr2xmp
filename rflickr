@@ -79,8 +79,14 @@ class ReFlickr
   def process_geo(geo)
     return unless geo
 
-    g = Geo::Coord.new(geo_fmt(geo[:latitude]), geo_fmt(geo[:longitude]))
-    puts "https://www.google.com/maps/place/#{g.lat},#{g.lon}" if @o.vg
+    f_lat = geo_fmt(geo[:latitude])
+    f_lon = geo_fmt(geo[:longitude])
+    g = Geo::Coord.new(f_lat, f_lon)
+    if @o.vg
+      geo_s = geo.slice(:latitude, :longitude).values.join(',')
+      puts "geo: #{geo_s} ll:#{f_lat},#{f_lon}",
+           "https://www.google.com/maps/place/#{g.to_s(dms: false)}"
+    end
     g
   end
 

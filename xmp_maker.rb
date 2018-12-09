@@ -4,6 +4,8 @@
 # xmp template writer
 class XmpMaker
   TK = 'github.com/porzione/flickr2xmp'
+  LAT_F = '%latd,%latm.%lats%lath'
+  LON_F = '%lngd,%lngm.%lngs%lngh'
 
   def initialize(opts)
     @dry = opts[:dry]
@@ -17,8 +19,8 @@ class XmpMaker
     ihsh[:tk] = TK
     if ihsh[:gps]
       ihsh[:gps] = {
-        lat: ihsh[:gps].strfcoord('%latd,%latm.%lats%lath'),
-        lon: ihsh[:gps].strfcoord('%lngd,%lngm.%lngs%lngh')
+        lat: ihsh[:gps].strfcoord(LAT_F),
+        lon: ihsh[:gps].strfcoord(LON_F)
       }
     end
     xmp = ERB.new(@tpl, nil, '-').result_with_hash ihsh

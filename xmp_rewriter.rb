@@ -177,8 +177,9 @@ class XMPRewriter
 
       s = XMP_TAGS[i[:s]]
       fmt = fgps.strfcoord(i[:f])
-      puts "gps: #{i[:s]} js:#{fmt} xmp:#{xmp[s]}" if @vg
-      next if fmt.to_f == xmp[s]
+      fmt_f = fmt.to_f
+      puts "gps: #{i[:s]} js:#{fmt}/#{fmt_f} xmp:#{xmp[s]}" if @vg
+      next if fmt_f == xmp[s]
 
       yield [s, fmt]
     end
