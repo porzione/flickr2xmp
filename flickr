@@ -8,6 +8,7 @@ require 'active_support/core_ext/hash'
 require 'flickraw'
 require 'oj'
 
+# TODO: flags to narrow range
 o = Struct.new(:j).new
 OptionParser.new do |opts|
   opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
@@ -19,8 +20,10 @@ cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
 FlickRaw.api_key = cfg[:api][:key]
 FlickRaw.shared_secret = cfg[:api][:secret]
 
-flickr.access_token  = cfg[:api][:access][:token]
-flickr.access_secret = cfg[:api][:access][:secret]
+if (access = cfg[:api][:access])
+  flickr.access_token  = access[:token]
+  flickr.access_secret = access[:secret]
+end
 
 per_page = 200
 page = 1
