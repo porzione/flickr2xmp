@@ -6,8 +6,7 @@ require 'active_support/core_ext/hash'
 require 'flickraw'
 
 cfg = YAML.load(File.read "#{__dir__}/flickr.yml").deep_symbolize_keys
-FlickRaw.api_key = cfg[:api][:key]
-FlickRaw.shared_secret = cfg[:api][:secret]
+flickr = FlickRaw::Flickr.new cfg[:api][:key], cfg[:api][:secret]
 
 token = flickr.get_request_token
 auth_url = flickr.get_authorize_url(token['oauth_token'], :perms => 'read')

@@ -4,5 +4,5 @@ ruby '~> 2.5.3'
 
 gem 'oj'
 gem 'activesupport'
-gem 'flickraw' #, github: 'hanklords/flickraw'
+gem 'flickraw', github: 'hanklords/flickraw'
 gem 'chronic'

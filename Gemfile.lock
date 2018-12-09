@@ -1,3 +1,10 @@
+GIT
+  remote: git://github.com/hanklords/flickraw.git
+  revision: 6bf254681f8d57e65b352d93fb49237bd178e695
+  specs:
+    flickraw (1.0.0.pre.pre1)
+      nokogiri
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -8,10 +15,12 @@ GEM
       tzinfo (~> 1.1)
     chronic (0.10.2)
     concurrent-ruby (1.1.3)
-    flickraw (0.9.9)
     i18n (1.1.1)
       concurrent-ruby (~> 1.0)
+    mini_portile2 (2.3.0)
     minitest (5.11.3)
+    nokogiri (1.8.5)
+      mini_portile2 (~> 2.3.0)
     oj (3.7.4)
     thread_safe (0.3.6)
     tzinfo (1.2.5)
@@ -23,7 +32,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   chronic
-  flickraw
+  flickraw!
   oj
 
 RUBY VERSION

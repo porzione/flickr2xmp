@@ -28,9 +28,7 @@ end
 o.freeze
 
 cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
-
-FlickRaw.api_key = cfg[:api][:key]
-FlickRaw.shared_secret = cfg[:api][:secret]
+flickr = FlickRaw::Flickr.new cfg[:api][:key], cfg[:api][:secret]
 
 if (access = cfg[:api][:access])
   flickr.access_token  = access[:token]
