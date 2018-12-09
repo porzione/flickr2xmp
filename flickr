@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'pp'
 require 'optparse'
 require 'chronic'
 require 'yaml'
@@ -9,69 +8,105 @@ require 'active_support/core_ext/hash'
 require 'flickraw'
 require 'oj'
 
-o = Struct.new(:j, :from, :to, :ud).new
-OptionParser.new do |opts|
-  opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
-  opts.on('-f date', 'Date from')     { |d| o.from = d }
-  opts.on('-t date', 'Date to')       { |d| o.to = d }
-  opts.on('--ud',    'Upload dates, default taken') { o.ud = true }
-end.parse!
-abort "No dir '#{o.j}'" if o.j && !Dir.exist?(o.j)
-if o.from
-  o.from = Chronic.parse(o.from, context: :past)&.to_i
-  abort("bad date '#{o.from}'") unless o.from
-end
-if o.to
-  o.to = Chronic.parse(o.to)&.to_i
-  abort("bad date '#{o.to}'") unless o.to
-end
-o.freeze
-
-cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
-flickr = FlickRaw::Flickr.new cfg[:api][:key], cfg[:api][:secret]
-
-if (access = cfg[:api][:access])
-  flickr.access_token  = access[:token]
-  flickr.access_secret = access[:secret]
-end
-
-per_page = 200
-page = 1
-
-Flickr = Struct.new(
-  :id, :name, :description, :count_views,
-  :date_taken, :date_imported,
-  :photopage, :tags, :geo,
-  keyword_init: true
-)
-
-loop do
-  # puts "page: #{page}"
-  # min_upload_date max_upload_date min_taken_date max_taken_date
-  photos = flickr.people.getPhotos(
-    user_id: cfg[:user_id], page: page, per_page: per_page
+# run baby run
+class Flickr
+  FlickrData = Struct.new(
+    :id, :name, :description, :count_views,
+    :date_taken, :date_imported,
+    :photopage, :tags, :geo,
+    keyword_init: true
   )
-  photos.each do |photo|
-    r = flickr.photos.getInfo(photo_id: photo.id)
-    fl = Flickr.new(
-      id:            r.id,
-      name:          r.title,
-      description:   r.description,
-      date_taken:    r.dates['taken'],
-      date_imported: Time.at(r.dateuploaded.to_i).strftime('%Y-%m-%d %H:%M:%S'),
-      count_views:   r.views,
-      tags:          r.tags.map { |t| { 'tag' => t['raw'] } },
-      photopage:     r.urls[0]['_content']
-    )
-    if r.respond_to?(:location)
-      fl.geo = r.location.to_hash.slice('latitude', 'longitude', 'accuracy')
-    end
-    puts fl.photopage
-    path = "photo_#{photo.id}.json"
-    path = File.join(o.j, path) if o.j
-    File.write(path, Oj.dump(fl.to_h, indent: 2, mode: :compat))
-  end
-  break unless photos.length == per_page
 
-  page += 1
+  def build_fd(rec)
+    fl = FlickrData.new(
+      id:            rec.id,
+      name:          rec.title,
+      description:   rec.description,
+      date_taken:    rec.dates['taken'],
+      date_imported: Time.at(rec.dateuploaded.to_i)
+                     .strftime('%Y-%m-%d %H:%M:%S'),
+      count_views:   rec.views,
+      tags:          rec.tags.map { |t| { 'tag' => t['raw'] } },
+      photopage:     rec.urls[0]['_content']
+    )
+    if rec.respond_to?(:location)
+      fl.geo = rec.location.to_hash.slice('latitude', 'longitude', 'accuracy')
+    end
+    fl
+  end
+
+  def initialize
+    optparse
+    cfgload
+    @per_page = 200
+  end
+
+  def go
+    page = 1
+    loop do
+      puts "page: #{page}"
+      photos = read_photos(page)
+      photos.each do |photo|
+        rec = @flickr.photos.getInfo(photo_id: photo.id)
+        fl = build_fd(rec)
+        log(fl)
+        path = "photo_#{photo.id}.json"
+        path = File.join(@o.j, path) if @o.j
+        File.write(path, Oj.dump(fl.to_h, indent: 2, mode: :compat))
+      end
+      break unless photos.length == @per_page
+
+      page += 1
+    end
+  end
+
+  private
+
+  def optparse
+    @o = Struct.new(:j, :from, :to, :ud).new
+    OptionParser.new do |opts|
+      opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
+      opts.on('-f date', 'Date from')     { |d| @o.from = d }
+      opts.on('-t date', 'Date to')       { |d| @o.to = d }
+      opts.on('--ud',    'Upload dates, default taken') { @o.ud = true }
+    end.parse!
+    abort "No dir '#{@o.j}'" if @o.j && !Dir.exist?(@o.j)
+    if @o.from
+      @o.from = Chronic.parse(@o.from, context: :past)&.to_i
+      abort("bad date '#{@o.from}'") unless @o.from
+    end
+    if @o.to
+      @o.to = Chronic.parse(@o.to)&.to_i
+      abort("bad date '#{@o.to}'") unless @o.to
+    end
+    @o.freeze
+  end
+
+  def cfgload
+    yaml = File.read("#{__dir__}/flickr.yml")
+    @cfg = YAML.safe_load(yaml).deep_symbolize_keys
+    @flickr = FlickRaw::Flickr.new(@cfg[:api][:key], @cfg[:api][:secret])
+    return unless (access = @cfg[:api][:access])
+
+    @flickr.access_token  = access[:token]
+    @flickr.access_secret = access[:secret]
+  end
+
+  def read_photos(page)
+    params = { user_id: @cfg[:user_id], page: page, per_page: @per_page }
+    if @o.from
+      params[@o.ud ? :min_upload_date : :min_taken_date] = @o.from
+    end
+    if @o.to
+      params[@o.ud ? :max_upload_date : :max_taken_date] = @o.to
+    end
+    @flickr.people.getPhotos(params)
+  end
+
+  def log(flickr)
+    date = @o.ud ? flickr.date_taken : flickr.date_imported
+    puts %(#{date} #{flickr.photopage} "#{flickr.name}")
+  end
 end
+
+Flickr.new.go
