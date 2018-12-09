@@ -8,13 +8,13 @@
     xmlns:dc="http://purl.org/dc/elements/1.1/"
     xmlns:flickr="http://github.com/porzione/flickr2xmp/"
 <% if gps -%>
-    exif:GPSVersionID="2.2.0.0" 
+    exif:GPSVersionID="2.2.0.0"
     exif:GPSLatitude="<%= gps[:lat] -%>"
     exif:GPSLongitude="<%= gps[:lon] -%>"
 <% end -%>
     flickr:id="<%= flickr.id %>"
-    flickr:url="<%= flickr.url %>" 
-    flickr:views="<%= flickr.views %>" 
+    flickr:url="<%= flickr.url %>"
+    flickr:views="<%= flickr.views %>"
 <% if flickr.faves -%>
     flickr:faves="<%= flickr.faves %>"
 <% end -%>

@@ -64,7 +64,7 @@ class XMPRewriter
 
   private
 
-  # exiftool output names
+  # exiftool output names instead of XMP-flickr
   def prepare_flickr
     @fl_tags = {}
     XMP_TAGS.each_pair do |s, tag|
@@ -84,7 +84,6 @@ class XMPRewriter
 
   def process_files(files)
     files.each do |f|
-      # puts "process file: #{f}" if @v
       file = f['SourceFile']
       ih = @files[file]
       if @vv
@@ -99,7 +98,6 @@ class XMPRewriter
       args << hierarchicalsubject(f, ih)
       gps(f, ih) { |g| args << g }
       args.compact!
-      # puts "args: #{args}"
       next if args.empty?
 
       rewrite(file, args)
@@ -180,7 +178,7 @@ class XMPRewriter
       s = XMP_TAGS[i[:s]]
       fmt = fgps.strfcoord(i[:f])
       puts "gps: #{i[:s]} js:#{fmt} xmp:#{xmp[s]}" if @vg
-      next if fmt == xmp[s].to_s
+      next if fmt.to_f == xmp[s]
 
       yield [s, fmt]
     end
@@ -199,7 +197,9 @@ class XMPRewriter
         puts "fl[#{s}]:#{fl[s]}.#{fl[s].class}"
         puts "xmp[#{x}]:#{xmp[x]}.#{xmp[x].class}"
       end
-      yield [x, fl[s]]
+      # full names but it doesn't matter
+      fx = XMP_TAGS[s]
+      yield [fx, fl[s]]
     end
   end
 end
