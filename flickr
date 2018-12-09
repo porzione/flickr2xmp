@@ -3,17 +3,28 @@
 
 require 'pp'
 require 'optparse'
+require 'chronic'
 require 'yaml'
 require 'active_support/core_ext/hash'
 require 'flickraw'
 require 'oj'
 
-# TODO: flags to narrow range
-o = Struct.new(:j).new
+o = Struct.new(:j, :from, :to, :ud).new
 OptionParser.new do |opts|
   opts.on('-j JSON', 'Path to JSONs') { |j| o.j = j }
+  opts.on('-f date', 'Date from')     { |d| o.from = d }
+  opts.on('-t date', 'Date to')       { |d| o.to = d }
+  opts.on('--ud',    'Upload dates, default taken') { o.ud = true }
 end.parse!
 abort "No dir '#{o.j}'" if o.j && !Dir.exist?(o.j)
+if o.from
+  o.from = Chronic.parse(o.from, context: :past)
+  abort("bad date '#{o.from}'") unless o.from
+end
+if o.to
+  o.to = Chronic.parse(o.to, context: :past)
+  abort("bad date '#{o.to}'") unless o.to
+end
 
 cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
 
@@ -37,6 +48,7 @@ Flickr = Struct.new(
 
 loop do
   # puts "page: #{page}"
+  # min_upload_date max_upload_date min_taken_date max_taken_date
   photos = flickr.people.getPhotos(
     user_id: cfg[:user_id], page: page, per_page: per_page
   )

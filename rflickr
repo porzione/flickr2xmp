@@ -139,5 +139,4 @@ class ReFlickr
   end
 end
 
-f = ReFlickr.new
-f.go
+ReFlickr.new.go
