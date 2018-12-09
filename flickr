@@ -18,13 +18,14 @@ OptionParser.new do |opts|
 end.parse!
 abort "No dir '#{o.j}'" if o.j && !Dir.exist?(o.j)
 if o.from
-  o.from = Chronic.parse(o.from, context: :past)
+  o.from = Chronic.parse(o.from, context: :past)&.to_i
   abort("bad date '#{o.from}'") unless o.from
 end
 if o.to
-  o.to = Chronic.parse(o.to, context: :past)
+  o.to = Chronic.parse(o.to)&.to_i
   abort("bad date '#{o.to}'") unless o.to
 end
+o.freeze
 
 cfg = YAML.safe_load(File.read("#{__dir__}/flickr.yml")).deep_symbolize_keys
 
