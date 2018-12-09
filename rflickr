@@ -8,7 +8,6 @@ require 'date'
 require 'dbm'
 require 'erb'
 require 'base64'
-require 'geo/coord'
 require 'active_support/core_ext/hash'
 require 'active_support/core_ext/object/blank'
 
@@ -81,13 +80,11 @@ class ReFlickr
 
     f_lat = geo_fmt(geo[:latitude])
     f_lon = geo_fmt(geo[:longitude])
-    g = Geo::Coord.new(f_lat, f_lon)
     if @o.vg
-      geo_s = geo.slice(:latitude, :longitude).values.join(',')
-      puts "geo: #{geo_s} ll:#{f_lat},#{f_lon}" \
-           " https://www.google.com/maps/place/#{g.to_s(dms: false)}"
+      g = geo.slice(:latitude, :longitude).values.join(',')
+      puts "geo: #{g} https://google.com/maps/place/#{f_lat},#{f_lon}"
     end
-    g
+    { lat: f_lat, lon: f_lon }
   end
 
   def process_tags(fl_tags)

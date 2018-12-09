@@ -35,7 +35,6 @@ class XMPRewriter
   def add_file(ihsh, filename)
     if @v
       h = ihsh.slice(:title, :descr, :gps, :tags)
-      h[:gps] = h[:gps]&.to_s(dms: false)
       puts "add js:#{h} #{filename}"
     end
     @files[filename] = ihsh
@@ -166,25 +165,23 @@ class XMPRewriter
 
   def gps(xmp, flickr)
     raise unless block_given?
+    return unless flickr[:gps]
 
     if @vg
       f = 'SourceFile', 'XMP:GPSLatitude', 'XMP:GPSLongitude'
       puts "gps: xmp #{xmp.slice(*f)}"
     end
-    fgps = flickr[:gps] || return
-    [
-      { s: :lat, f: '%lat' },
-      { s: :lon, f: '%lng' }
-    ].each do |i|
-      next if xmp[i[:t]] && !@upd
 
-      s = XMP_TAGS[i[:s]]
-      fmt = fgps.strfcoord(i[:f])
-      fmt_f = fmt.to_f
-      puts "gps: #{i[:s]} js:#{fmt}/#{fmt_f} xmp:#{xmp[s]}" if @vg
-      next if fmt_f == xmp[s]
+    %i[lat lon].each do |i|
+      next if xmp[i] && !@upd
 
-      yield [s, fmt]
+      s = XMP_TAGS[i]
+      fl = flickr[:gps][i]
+      fl_f = fl.to_f
+      puts "gps: #{i} js:#{fl}/#{fl_f} xmp:#{xmp[s]}" if @vg
+      next if fl_f == xmp[s]
+
+      yield [s, fl]
     end
   end
 
