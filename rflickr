@@ -16,7 +16,7 @@ require_relative 'xmp_maker'
 require_relative 'xmp_rewriter'
 
 def geo_fmt(str)
-  str.include?('.') ? str : str.insert(-7, '.').sub(/-\./, '-0.')
+  str.include?('.') ? str : str.clone.insert(-7, '.').sub(/-\./, '-0.')
 end
 
 # Flickr import
@@ -84,8 +84,8 @@ class ReFlickr
     g = Geo::Coord.new(f_lat, f_lon)
     if @o.vg
       geo_s = geo.slice(:latitude, :longitude).values.join(',')
-      puts "geo: #{geo_s} ll:#{f_lat},#{f_lon}",
-           "https://www.google.com/maps/place/#{g.to_s(dms: false)}"
+      puts "geo: #{geo_s} ll:#{f_lat},#{f_lon}" \
+           " https://www.google.com/maps/place/#{g.to_s(dms: false)}"
     end
     g
   end
@@ -109,6 +109,7 @@ class ReFlickr
     end
     tags = process_tags(fl[:tags])
     puts "js: #{file} #{tags}" if @o.v
+    puts "js: #{File.basename(file)}" if @o.vg
     [
       {
         file:    File.basename(file),

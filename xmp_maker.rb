@@ -18,10 +18,12 @@ class XmpMaker
     ihsh[:tags]&.map! { |t| t.encode xml: :text }
     ihsh[:tk] = TK
     if ihsh[:gps]
+      # puts "gps maker 1:#{ihsh[:gps]}"
       ihsh[:gps] = {
         lat: ihsh[:gps].strfcoord(LAT_F),
         lon: ihsh[:gps].strfcoord(LON_F)
       }
+      # puts "gps maker 2:#{ihsh[:gps]}"
     end
     xmp = ERB.new(@tpl, nil, '-').result_with_hash ihsh
     File.open(filename, 'w') { |f| f.write(xmp) } unless @dry

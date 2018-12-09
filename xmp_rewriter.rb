@@ -167,7 +167,10 @@ class XMPRewriter
   def gps(xmp, flickr)
     raise unless block_given?
 
-    puts "gps: #{xmp['SourceFile']}" if @vg
+    if @vg
+      f = 'SourceFile', 'XMP:GPSLatitude', 'XMP:GPSLongitude'
+      puts "gps: xmp #{xmp.slice(*f)}"
+    end
     fgps = flickr[:gps] || return
     [
       { s: :lat, f: '%lat' },
