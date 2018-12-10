@@ -41,7 +41,7 @@ class XMPRewriter
   end
 
   def go
-    files = @files.keys.join(' ')
+    files = @files.keys.map { |f| "'#{f}'" }.join(' ')
     if files.empty?
       warn 'no files to rewrite'
       return
@@ -106,7 +106,7 @@ class XMPRewriter
   def rewrite(file, args)
     puts "rewrite args:#{args.reject { |i| i[0] == 'XMP:Data' }}" if @vv
     sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
-    cmd = "exiftool -config #{@cfg} #{sarg} #{file}"
+    cmd = "exiftool -config #{@cfg} #{sarg} '#{file}'"
     puts "cmd write: #{cmd}" if @v
     return if @dry
 
