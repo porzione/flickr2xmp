@@ -8,10 +8,10 @@ require 'active_support/core_ext/hash'
 require 'flickraw'
 require 'oj'
 
-# run baby run
+# run flickr run
 class Flickr
   FlickrData = Struct.new(
-    :id, :name, :description, :count_views,
+    :id, :name, :description, :count_views, :count_faves,
     :date_taken, :date_imported,
     :photopage, :tags, :geo,
     keyword_init: true
@@ -41,6 +41,8 @@ class Flickr
     @per_page = 200
   end
 
+  # TODO: flickr.photos.comments.getList
+
   def go
     page = 1
     loop do
@@ -49,10 +51,10 @@ class Flickr
       photos.each do |photo|
         rec = @flickr.photos.getInfo(photo_id: photo.id)
         fl = build_fd(rec)
+        fl.count_faves = read_faves(photo.id) if @o.faves
         log(fl)
-        path = "photo_#{photo.id}.json"
-        path = File.join(@o.j, path) if @o.j
-        File.write(path, Oj.dump(fl.to_h, indent: 2, mode: :compat))
+        path = File.join(@o.j || '.', "photo_#{photo.id}.json")
+        File.write(path, Oj.dump(fl.to_h.compact, indent: 2, mode: :compat))
       end
       break unless photos.length == @per_page
 
@@ -63,9 +65,10 @@ class Flickr
   private
 
   def optparse
-    @o = Struct.new(:j, :from, :to, :ud).new
+    @o = Struct.new(:j, :from, :to, :ud, :faves).new
     OptionParser.new do |opts|
       opts.on('-j JSON', 'Path to JSONs') { |j| @o.j = j }
+      opts.on('--faves', 'Faves count')   { @o.faves = true }
       opts.on('-f date', 'Date from')     { |d| @o.from = d }
       opts.on('-t date', 'Date to')       { |d| @o.to = d }
       opts.on('--ud',    'Upload dates, default taken') { @o.ud = true }
@@ -103,9 +106,15 @@ class Flickr
     @flickr.people.getPhotos(params)
   end
 
-  def log(flickr)
-    date = @o.ud ? flickr.date_taken : flickr.date_imported
-    puts %(#{date} #{flickr.photopage} "#{flickr.name}")
+  def read_faves(photo_id)
+    @flickr.photos.getFavorites(photo_id: photo_id).total
+  end
+
+  def log(fli)
+    date = @o.ud ? fli.date_taken : fli.date_imported
+    stats = "v:#{fli.count_views}"
+    stats = "#{stats} f:#{fli.count_faves}" if fli.count_views
+    puts %(#{date} #{fli.photopage} "#{fli.name}" #{stats})
   end
 end
 
