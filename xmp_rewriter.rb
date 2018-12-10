@@ -51,7 +51,7 @@ class XMPRewriter
     puts "cmd read: #{cmd}" if @v
     out, err, st = Open3.capture3 cmd
     unless st.success?
-      warn "ERR go: #{out} #{err} #{st}"
+      warn "ERR go: #{out} #{err} #{st}, cmd: #{cmd}"
       return
     end
     if out.empty?
@@ -105,18 +105,18 @@ class XMPRewriter
 
   def rewrite(file, args)
     puts "rewrite args:#{args.reject { |i| i[0] == 'XMP:Data' }}" if @vv
-    sarg = args.map { |a| "-#{a[0]}='#{a[1]}'" }.join(' ')
+    sarg = args.map do |a|
+      v = a[1].gsub("'", '&#39;')
+      "-#{a[0]}='#{v}'"
+    end.join(' ')
     cmd = "exiftool -config #{@cfg} #{sarg} '#{file}'"
     puts "cmd write: #{cmd}" if @v
     return if @dry
 
     out, err, st = Open3.capture3 cmd
-    if st.success?
-      puts "success: #{out}" if @v
-    else
-      warn "ERR rew: #{out} #{err} #{st}"
-      return
-    end
+    raise "ERR rew: #{out} #{err} #{st}, cmd: #{cmd}" unless st.success?
+
+    puts "success: #{out}" if @v
   end
 
   def title(xmp, flickr)
